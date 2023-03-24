@@ -1,6 +1,6 @@
 use crate::client::{ClientError, MockClient};
-use crate::service::sync::tests;
-use crate::service::sync::tests::{get_lock, MTX};
+use crate::service::tests;
+use crate::service::tests::{get_lock, MTX};
 use crate::NodeService;
 use mockall::predicate;
 use std::net::SocketAddr;

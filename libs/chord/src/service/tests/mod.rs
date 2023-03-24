@@ -120,7 +120,7 @@ impl MockClient {
     /// ```rust
     /// use std::net::SocketAddr;
     /// use crate::client::MockClient;
-    /// use crate::service::sync::tests::{get_lock, MTX};
+    /// use crate::service::tests::{get_lock, MTX};
     ///
     /// let _m = get_lock(&MTX);
     /// let ctx = MockClient::init_context();
