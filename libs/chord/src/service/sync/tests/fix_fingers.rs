@@ -1,5 +1,5 @@
 use crate::client::MockClient;
-use crate::service::tests::{get_lock, MTX};
+use crate::service::sync::tests::{get_lock, MTX};
 use crate::NodeService;
 use std::net::SocketAddr;
 

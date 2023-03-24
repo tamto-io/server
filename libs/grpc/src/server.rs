@@ -37,7 +37,7 @@ impl ChordService {
         let handle = {
             // let ref this = s;
             tokio::spawn(async move {
-                let service = node_service.clone();
+                let service = node_service;
                 service.find_successor(1);
                 // self.node.fix_fingers().await;
                 // Process each socket concurrently.
