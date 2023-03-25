@@ -22,32 +22,14 @@ pub mod chord_proto {
 
 #[derive(Debug)]
 pub struct ChordService {
-    node: Arc<NodeService<ChordGrpcClient>>,
-    join_handle: Option<JoinHandle<()>>,
+    node: NodeService<ChordGrpcClient>,
 }
 
 impl ChordService {
     pub fn new(addr: SocketAddr) -> Self {
-        let node_service = Arc::new(NodeService::new(addr));
-        let mut s = Self {
-            node: node_service.clone(),
-            join_handle: None,
-        };
-
-        let handle = {
-            // let ref this = s;
-            tokio::spawn(async move {
-                let service = node_service;
-                service.find_successor(1);
-                // self.node.fix_fingers().await;
-                // Process each socket concurrently.
-                println!("Start background jobs");
-            })
-        };
-
-        s.join_handle = Some(handle);
-
-        s
+        Self {
+            node: NodeService::new(addr),
+        }
     }
 
     fn map_error(error: chord_rs::error::ServiceError) -> Status {

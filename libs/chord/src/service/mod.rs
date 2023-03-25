@@ -12,21 +12,41 @@ pub struct NodeService<C: Client> {
     addr: SocketAddr,
     store: NodeStore,
     phantom: PhantomData<C>,
+    #[cfg(feature = "async")]
+    handle: tokio::task::JoinHandle<()>,
 }
 
 impl<C: Client> NodeService<C> {
-    #[cfg(not(feature = "async"))]
     pub fn new(socket_addr: SocketAddr) -> Self {
         let id = hash(socket_addr.ip().to_string().as_bytes());
         Self::with_id(id, socket_addr)
     }
 
     #[cfg(feature = "async")]
-    pub fn new(socket_addr: SocketAddr) -> Self {
-        let id = hash(socket_addr.ip().to_string().as_bytes());
-        Self::with_id(id, socket_addr)
+    fn with_id(id: u64, addr: SocketAddr) -> Self {
+        use tokio::spawn;
+        let handle = {
+            // let ref this = s;
+            spawn(async move {
+                // let service = node_service;
+                // service.find_successor(1);
+                // self.node.fix_fingers().await;
+                // Process each socket concurrently.
+                println!("Start background jobs");
+            })
+        };
+
+        let store = NodeStore::new(Node::with_id(id, addr));
+        Self {
+            id,
+            addr,
+            store,
+            phantom: PhantomData,
+            handle,
+        }
     }
 
+    #[cfg(not(feature = "async"))]
     fn with_id(id: u64, addr: SocketAddr) -> Self {
         let store = NodeStore::new(Node::with_id(id, addr));
         Self {
@@ -188,5 +208,12 @@ pub mod error {
                 Self::Unexpected(message) => write!(f, "{}", message),
             }
         }
+    }
+}
+
+#[cfg(feature = "async")]
+impl<C: Client> Drop for NodeService<C> {
+    fn drop(&mut self) {
+        self.handle.abort();
     }
 }
