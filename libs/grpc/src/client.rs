@@ -17,8 +17,6 @@ pub struct ChordGrpcClient {
 impl Client for ChordGrpcClient {
     fn init(addr: SocketAddr) -> Self {
         let endpoint = Channel::from_shared(addr.to_string()).unwrap();
-        // let client = ChordNodeClient::connect(endpoint.unwrap());
-        // let channel = endpoint.unwrap().connect_lazy();
 
         ChordGrpcClient { endpoint }
     }
@@ -105,7 +103,7 @@ impl TryFrom<chord_proto::IpAddress> for IpAddr {
             array.copy_from_slice(&addr);
             return array
         }
-        
+
         if ip.is_v4() && ip.address.len() != 4 {
             return Err(IpParseError::new("Invalid IPv4 address"));
         } else if ip.is_v6() && ip.address.len() != 16 {

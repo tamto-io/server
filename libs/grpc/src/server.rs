@@ -83,13 +83,13 @@ impl From<chord_rs::Node> for chord_proto::Node {
 impl From<IpAddr> for chord_proto::IpAddress {
     fn from(ip: IpAddr) -> Self {
         let (version, address) = match ip {
-            IpAddr::V4(v4) => (chord_proto::IpVersion::Ipv4, v4.to_string()),
-            IpAddr::V6(v6) => (chord_proto::IpVersion::Ipv6, v6.to_string()),
+            IpAddr::V4(v4) => (chord_proto::IpVersion::Ipv4, v4.octets().to_vec()),
+            IpAddr::V6(v6) => (chord_proto::IpVersion::Ipv6, v6.octets().to_vec()),
         };
 
         chord_proto::IpAddress {
             version: version.into(),
-            address: address.as_bytes().to_vec(),
+            address: address,
         }
     }
 }
