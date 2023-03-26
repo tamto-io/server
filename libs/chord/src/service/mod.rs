@@ -1,5 +1,5 @@
 use crate::client::ClientError;
-use crate::node::store::NodeStore;
+use crate::node::store::{NodeStore, Db};
 use crate::node::Finger;
 use crate::{Client, Node};
 use seahash::hash;
@@ -12,8 +12,6 @@ pub struct NodeService<C: Client> {
     addr: SocketAddr,
     store: NodeStore,
     phantom: PhantomData<C>,
-    #[cfg(feature = "async")]
-    handle: tokio::task::JoinHandle<()>,
 }
 
 impl<C: Client> NodeService<C> {
@@ -22,39 +20,18 @@ impl<C: Client> NodeService<C> {
         Self::with_id(id, socket_addr)
     }
 
-    #[cfg(feature = "async")]
     fn with_id(id: u64, addr: SocketAddr) -> Self {
-        use tokio::spawn;
-        let handle = {
-            // let ref this = s;
-            spawn(async move {
-                // let service = node_service;
-                // service.find_successor(1);
-                // self.node.fix_fingers().await;
-                // Process each socket concurrently.
-                println!("Start background jobs");
-            })
-        };
-
         let store = NodeStore::new(Node::with_id(id, addr));
         Self {
             id,
             addr,
             store,
             phantom: PhantomData,
-            handle,
         }
     }
 
-    #[cfg(not(feature = "async"))]
-    fn with_id(id: u64, addr: SocketAddr) -> Self {
-        let store = NodeStore::new(Node::with_id(id, addr));
-        Self {
-            id,
-            addr,
-            store,
-            phantom: PhantomData,
-        }
+    pub(crate) fn store(&self) -> Db {
+        self.store.db()
     }
 
     /// Find the successor of the given id.
@@ -66,8 +43,8 @@ impl<C: Client> NodeService<C> {
     ///
     /// * `id` - The id to find the successor for
     pub async fn find_successor(&self, id: u64) -> Result<Node, error::ServiceError> {
-        if Node::is_between_on_ring(id, self.id, self.store.successor().id) {
-            Ok(self.store.successor().clone())
+        if Node::is_between_on_ring(id, self.id, self.store().successor().id) {
+            Ok(self.store().successor().clone())
         } else {
             let n = self.closest_preceding_node(id);
             let client: C = n.client();
@@ -84,10 +61,10 @@ impl<C: Client> NodeService<C> {
     /// # Arguments
     ///
     /// * `node` - The node to join the ring with. It's an existing node in the ring.
-    pub async fn join(&mut self, node: Node) -> Result<(), error::ServiceError> {
+    pub async fn join(&self, node: Node) -> Result<(), error::ServiceError> {
         let client: C = node.client();
         let successor = client.find_successor(self.id).await?;
-        self.store.set_successor(successor);
+        self.store().set_successor(successor);
 
         Ok(())
     }
@@ -100,12 +77,12 @@ impl<C: Client> NodeService<C> {
     /// # Arguments
     ///
     /// * `node` - The node which might be the new predecessor
-    pub fn notify(&mut self, node: Node) {
-        let predecessor = self.store.predecessor();
+    pub fn notify(&self, node: Node) {
+        let predecessor = self.store().predecessor();
         if predecessor.is_none()
             || Node::is_between_on_ring(node.id.clone(), predecessor.unwrap().id, self.id)
         {
-            self.store.set_predecessor(node);
+            self.store().set_predecessor(node);
         }
     }
 
@@ -120,16 +97,16 @@ impl<C: Client> NodeService<C> {
     /// > **Note**
     /// >
     /// > This method should be called periodically.
-    pub fn stabilize(&mut self) -> Result<(), error::ServiceError> {
-        let client: C = self.store.successor().client();
+    pub fn stabilize(&self) -> Result<(), error::ServiceError> {
+        let client: C = self.store().successor().client();
         let result = client.predecessor();
         if let Ok(Some(x)) = result {
-            if Node::is_between_on_ring(x.id.clone(), self.id, self.store.successor().id) {
-                self.store.set_successor(x);
+            if Node::is_between_on_ring(x.id.clone(), self.id, self.store().successor().id) {
+                self.store().set_successor(x);
             }
         }
 
-        let client: C = self.store.successor().client();
+        let client: C = self.store().successor().client();
         client.notify(Node {
             id: self.id,
             addr: self.addr,
@@ -146,11 +123,11 @@ impl<C: Client> NodeService<C> {
     /// > **Note**
     /// >
     /// > This method should be called periodically.
-    pub fn check_predecessor(&mut self) {
-        if let Some(predecessor) = self.store.predecessor() {
+    pub fn check_predecessor(&self) {
+        if let Some(predecessor) = self.store().predecessor() {
             let client: C = predecessor.client();
             if let Err(ClientError::ConnectionFailed(_)) = client.ping() {
-                self.store.unset_predecessor();
+                self.store().unset_predecessor();
             };
         }
     }
@@ -163,27 +140,19 @@ impl<C: Client> NodeService<C> {
     /// > **Note**
     /// >
     /// > This method should be called periodically.
-    pub async fn fix_fingers(&mut self) {
-        for i in 0..self.store.finger_table.len() {
+    pub async fn fix_fingers(&self) {
+        for i in 0..Finger::FINGER_TABLE_SIZE {
             let finger_id = Finger::finger_id(self.id, (i + 1) as u8);
             let result = { self.find_successor(finger_id).await };
             if let Ok(successor) = result {
-                self.store.finger_table[i].node = successor;
+                self.store().update_finger(i.into(), successor)
+                // self.store().finger_table[i].node = successor;
             }
         }
     }
 
-    fn closest_preceding_node(&self, id: u64) -> &Node {
-        for finger in self.store.finger_table.iter().rev() {
-            if finger.start > self.id && finger.node.id < id && finger.start < id {
-                return &finger.node;
-            } else if id < self.id {
-                // if the id is smaller than the current node, we return the last finger
-                return &finger.node;
-            }
-        }
-
-        self.store.successor()
+    fn closest_preceding_node(&self, id: u64) -> Node {
+        self.store().closest_preceding_node(self.id, id)
     }
 }
 
@@ -208,12 +177,5 @@ pub mod error {
                 Self::Unexpected(message) => write!(f, "{}", message),
             }
         }
-    }
-}
-
-#[cfg(feature = "async")]
-impl<C: Client> Drop for NodeService<C> {
-    fn drop(&mut self) {
-        self.handle.abort();
     }
 }

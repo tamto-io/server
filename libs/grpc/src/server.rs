@@ -1,14 +1,11 @@
 use std::{
     net::{IpAddr, SocketAddr},
-    sync::Arc,
-    thread,
 };
 
 use chord_proto::chord_node_server::ChordNode;
 pub use chord_proto::chord_node_server::ChordNodeServer;
 use chord_proto::{PingRequest, PingResponse};
 use chord_rs::NodeService;
-use tokio::task::JoinHandle;
 pub use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 

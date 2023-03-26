@@ -7,6 +7,9 @@ pub struct Finger {
 }
 
 impl Finger {
+    /// Finger table size
+    pub const FINGER_TABLE_SIZE: u8 = 64;
+
     /// Generate a finger id for a given node id and finger index.
     /// The finger id is calculated using the following formula:
     /// ```text
@@ -21,7 +24,7 @@ impl Finger {
     /// * `node_id` - The id of the node
     /// * `index` - The index of the finger
     pub(crate) fn finger_id(node_id: u64, index: u8) -> u64 {
-        Self::sized_finger_id(64_u8, node_id, index)
+        Self::sized_finger_id(Self::FINGER_TABLE_SIZE, node_id, index)
     }
 
     pub(crate) fn sized_finger_id(size: u8, node_id: u64, index: u8) -> u64 {
