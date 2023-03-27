@@ -5,7 +5,7 @@ use crate::server::chord_proto::{FindSuccessorRequest, self};
 use chord_rs::client::ClientError;
 use chord_rs::{Client, Node};
 use tonic::async_trait;
-use tonic::transport::{Channel, Endpoint};
+use tonic::transport::Endpoint;
 
 #[derive(Debug)]
 pub struct ChordGrpcClient {
@@ -16,7 +16,8 @@ pub struct ChordGrpcClient {
 #[async_trait]
 impl Client for ChordGrpcClient {
     fn init(addr: SocketAddr) -> Self {
-        let endpoint = Channel::from_shared(addr.to_string()).unwrap();
+        // TODO: the protocol should be configurable
+        let endpoint = Endpoint::from_shared(format!("http://{}", addr)).unwrap();
 
         ChordGrpcClient { endpoint }
     }
@@ -31,10 +32,10 @@ impl Client for ChordGrpcClient {
         let request = tonic::Request::new(FindSuccessorRequest { id });
         let response = client.find_successor(request).await.unwrap().into_inner();
 
-        println!("response: {:?}", response);
-
         let node = response.node.unwrap();
         let node: Node = node.try_into().unwrap();
+
+        println!("response: {:?}", node.addr());
 
         Ok(node)
     }
@@ -67,6 +68,16 @@ impl TryFrom<chord_proto::Node> for chord_rs::Node {
         let addr = SocketAddr::new(ip, port);
 
         Ok(chord_rs::Node::new(addr))
+    }
+}
+
+impl ChordGrpcClient {
+    pub fn new(addr: SocketAddr) -> Self {
+        Self::init(addr)
+    }
+
+    pub async fn find_successor(&self, id: u64) -> Result<Node, ClientError> {
+        Client::find_successor(self, id).await
     }
 }
 

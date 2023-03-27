@@ -30,6 +30,10 @@ impl<C: Client> NodeService<C> {
         }
     }
 
+    pub fn id(&self) -> u64 {
+        self.id
+    }
+
     pub(crate) fn store(&self) -> Db {
         self.store.db()
     }

@@ -1,11 +1,11 @@
 use std::{
-    net::{IpAddr, SocketAddr},
+    net::{IpAddr, SocketAddr}, sync::Arc,
 };
 
 use chord_proto::chord_node_server::ChordNode;
 pub use chord_proto::chord_node_server::ChordNodeServer;
 use chord_proto::{PingRequest, PingResponse};
-use chord_rs::NodeService;
+use chord_rs::{NodeService, Node};
 pub use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
@@ -19,13 +19,25 @@ pub mod chord_proto {
 
 #[derive(Debug)]
 pub struct ChordService {
-    node: NodeService<ChordGrpcClient>,
+    node: Arc<NodeService<ChordGrpcClient>>,
 }
 
 impl ChordService {
-    pub fn new(addr: SocketAddr) -> Self {
+    pub fn new(addr: SocketAddr, ring: Option<SocketAddr>) -> Self {
+        let node_service = Arc::new(NodeService::new(addr));
+
+        if let Some(ring) = ring {
+            let node = Node::new(ring);
+            let node_service = node_service.clone();
+            tokio::spawn(async move {
+                println!("Joining ring: {:?}", ring);
+                node_service.join(node).await.unwrap();
+            });
+        }
+
+
         Self {
-            node: NodeService::new(addr),
+            node: node_service,
         }
     }
 
