@@ -22,7 +22,7 @@ pub trait Client {
     async fn find_successor(&self, id: u64) -> Result<Node, ClientError>;
 
     /// Get the successor of the node
-    fn successor(&self) -> Result<Node, ClientError>;
+    async fn successor(&self) -> Result<Node, ClientError>;
 
     /// Get the predecessor of the node
     async fn predecessor(&self) -> Result<Option<Node>, ClientError>;

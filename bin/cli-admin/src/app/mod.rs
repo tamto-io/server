@@ -6,15 +6,14 @@ use tui::widgets::ListState;
 
 use crate::IoEvent;
 
-use self::node::NodeList;
+use self::node::{NodeList, NodeDetail};
 
 mod node;
 
 enum UpdateEvent {
     NodeAdd(SocketAddr),
     NodeRemove(u64),
-    // NodeUpdate(u64, NodeStatus),
-    // NodeDetail(u64, NodeDetail),
+    FetchNodeDetail(u64),
 }
 
 pub struct App {
@@ -82,13 +81,35 @@ impl App {
         let (update_tx, update_rx) = mpsc::channel();
 
 
-        Self::run(update_rx, data.clone());
+        Self::run(update_tx.clone(), update_rx, data.clone());
 
         Self { tx, update_tx, shared: data }
     }
 
     /// Run the background task
-    fn run(rx: mpsc::Receiver<UpdateEvent>, shared: Arc<Shared>) {
+    fn run(tx: mpsc::Sender<UpdateEvent>, rx: mpsc::Receiver<UpdateEvent>, shared: Arc<Shared>) {
+        let shared_refresh = shared.clone();
+        tokio::spawn(async move {
+            let shared = shared_refresh.clone();
+            loop {
+                tokio::time::sleep(Duration::from_millis(1000)).await;
+
+                let mut refreshed: u64 = 0;
+                let nodes = {
+                    let state = shared.state.lock().unwrap();
+                    state.node_list.ids()
+                };
+                for node in nodes {
+                    let id = node.id;
+                    log::debug!("Refreshing node {}", id);
+                    if id == refreshed {
+                        continue;
+                    }
+                    tx.send(UpdateEvent::NodeAdd(node.addr)).unwrap();
+                    refreshed = id;
+                }
+            }
+        });
         tokio::spawn(async move {
             loop {
                 let shared = shared.clone();
@@ -110,6 +131,7 @@ impl App {
                                             continue;
                                         }
                                         log::debug!("Adding node {} to list", finger.id());
+
                                         state.node_list.add(finger.id(), finger.addr());
                                     }
                                     drop(state);
@@ -124,6 +146,23 @@ impl App {
                                 // let mut state = shared.state.lock().unwrap();
                                 // state.node_list.remove(id);
                             }
+                            UpdateEvent::FetchNodeDetail(id) => {
+                                let shared = shared.clone();
+                                tokio::spawn(async move {
+                                    let node = {
+                                        let state = shared.state.lock().unwrap();
+                                        state.node_list.get(id).unwrap().clone()
+                                    };
+                                    let client = ChordGrpcClient::init(node.addr);
+                                    let predecessor = client.predecessor().await.unwrap();
+                                    let successor = client.successor().await.unwrap().into();
+
+                                    let mut state = shared.state.lock().unwrap();
+                                    let detail = NodeDetail::new(predecessor.map(|p| p.into()), successor);
+
+                                    state.node_list.update(id, detail);
+                                });
+                            },
                         }
                     }
                     Err(mpsc::RecvTimeoutError::Timeout) => {}
@@ -166,9 +205,23 @@ impl App {
     pub fn add_node(&self, id: u64, addr: SocketAddr) {
         self.update_tx.send(UpdateEvent::NodeAdd(addr)).unwrap();
     }
+
+    pub(crate) fn get_node_detail(&self, id: u64) -> Option<node::NodeDetail> {
+        let state = self.shared.state.lock().unwrap();
+
+        let detail = state.node_list.get(id)
+            .map(|node| node.detail.clone())
+            .flatten();
+
+        if detail.is_none() || detail.as_ref().unwrap().should_refresh() {
+            self.update_tx.send(UpdateEvent::FetchNodeDetail(id)).unwrap();
+        }
+
+        detail
+    }
     
     /// Returns the list of node ids and the state of the list widget
-    pub fn node_ids(&self) -> (ListState, Vec<u64>) {
+    pub(crate) fn node_ids(&self) -> (ListState, Vec<node::NodeElement>) {
         let state = self.shared.state.lock().unwrap();
 
         (state.node_list.state.clone(), state.node_list.ids())

@@ -81,19 +81,56 @@ fn render_main<B: Backend>(f: &mut Frame<B>, app: App, layout_chunk: Rect) {
 
 
 fn render_ring_overwiew<B: Backend>(f: &mut Frame<B>, app: App, layout_chunk: Rect) {
-    let text = vec![
-        Spans::from(Span::styled("Hello", Style::default().fg(Color::Red))),
+    let mut text = vec![
+        Spans::from(Span::styled("Select a node to fetch data", Style::default().fg(Color::Red))),
         Spans::from(Span::styled("World", Style::default().fg(Color::Blue))),
     ];
 
     let (list_state, ids) = app.node_ids();
-    let items: Vec<ListItem> = ids.iter().map(|id| ListItem::new(id.to_string())).collect();
+    let items: Vec<ListItem> = ids.iter()
+        .map(|node| {
+            let style = if node.state.is_new() {
+                Style::default().fg(Color::Green)
+            } else {
+                Style::default()
+            };
+            ListItem::new(node.id.to_string()).style(style)
+        })
+        .collect();
+
     let list = List::new(items)
         .block(Block::default().title("Nodes").borders(Borders::ALL))
         .style(Style::default().fg(Color::White))
-        .highlight_style(Style::default().fg(Color::Black).bg(Color::Rgb(255, 204, 153)).add_modifier(Modifier::BOLD))
-        .highlight_symbol(">> ");
+        .highlight_style(Style::default().fg(Color::Black).bg(Color::Rgb(255, 204, 153)).add_modifier(Modifier::BOLD));
 
+    list_state.selected().map(|i| {
+        let node = &ids[i];
+        let detail = app.get_node_detail(node.id);
+
+        let style = Style::default().fg(Color::White);
+        // let mut text = vec![];
+        if let Some(detail) = detail {
+            text.clear();
+            text.push(Spans::from(Span::styled(format!("Node ID: {}", node.id), style)));
+            text.push(Spans::from(Span::styled(format!("Address: {}", node.addr), style)));
+            // text.push(Spans::from(Span::styled(format!("State: {}", node.state), style)));
+
+            
+            text.push(Spans::from(Span::raw("")));
+
+            text.push(Spans::from(Span::styled(format!("Successor: {}", detail.successor.id), style)));
+            text.push(Spans::from(Span::styled(format!("|          {}", detail.successor.addr), style)));
+            if let Some(predecessor) = detail.predecessor {
+                text.push(Spans::from(Span::raw("")));
+
+                text.push(Spans::from(Span::styled(format!("Predecessor: {}", predecessor.id), style)));
+                text.push(Spans::from(Span::styled(format!("|            {}", predecessor.addr), style)));
+            }
+            // text.push(Spans::from(Span::styled(format!("Predecessor: {}", detail.predecessor), style)));
+        } else {
+            text.push(Spans::from(Span::styled("Loading...", style)));
+        }
+    });
     let mut list_state = list_state;
     
 

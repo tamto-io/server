@@ -38,8 +38,8 @@ impl Client for ChordGrpcClient {
         Ok(node)
     }
 
-    fn successor(&self) -> Result<Node, ClientError> {
-        unimplemented!()
+    async fn successor(&self) -> Result<Node, ClientError> {
+        self.get_finger_table().await.map(|table| table[0].clone())
     }
 
     async fn predecessor(&self) -> Result<Option<Node>, ClientError> {

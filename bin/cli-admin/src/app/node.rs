@@ -1,23 +1,70 @@
-use std::{net::SocketAddr, collections::HashMap};
+use std::{net::SocketAddr, collections::HashMap, time::Instant};
 
 use tui::widgets::{ListState, ListItem};
 
 
-enum NodeStatus {
-    New(u8),
+#[derive(Clone, Debug)]
+pub(crate) enum NodeStatus {
+    New(Instant),
     Active,
     Inactive(u8),
 }
 
+impl NodeStatus {
+    pub fn new() -> Self {
+        Self::New(Instant::now())
+    }
 
-struct NodeDetail {
+    pub fn is_new(&self) -> bool {
+        match self {
+            Self::New(instant) if (Instant::now().duration_since(*instant).as_secs()) < 5 => true,
+            _ => false,
+        }
+    }
 }
 
-struct NodeElement {
-    id: u64,
-    addr: SocketAddr,
-    state: NodeStatus,
-    detail: Option<NodeDetail>
+#[derive(Clone, Debug)]
+pub(crate) struct NodeInfo {
+    pub(crate) id: u64,
+    pub(crate) addr: SocketAddr,
+}
+
+impl From<chord_rs::Node> for NodeInfo {
+    fn from(node: chord_rs::Node) -> Self {
+        Self { id: node.id(), addr: node.addr() }
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct NodeDetail {
+    pub(crate) predecessor: Option<NodeInfo>,
+    pub(crate) successor: NodeInfo,
+    pub(crate) last_refresh: Instant,
+}
+
+impl NodeDetail {
+    pub fn new(predecessor: Option<NodeInfo>, successor: NodeInfo) -> Self {
+        Self { predecessor, successor, last_refresh: Instant::now() }
+    }
+
+    /// Returns true if the last refresh was more than 1 second ago
+    pub fn should_refresh(&self) -> bool {
+        (Instant::now().duration_since(self.last_refresh).as_secs()) > 1
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct NodeElement {
+    pub(crate) id: u64,
+    pub(crate) addr: SocketAddr,
+    pub(crate) state: NodeStatus,
+    pub(crate) detail: Option<NodeDetail>,
+}
+
+impl NodeElement {
+    pub fn new(id: u64, addr: SocketAddr) -> Self {
+        Self { id, addr, state: NodeStatus::new(), detail: None }
+    }
 }
 
 pub struct NodeList {
@@ -38,7 +85,17 @@ impl NodeList {
     }
 
     pub fn add(&mut self, id: u64, addr: SocketAddr) {
-        self.items.insert(id, NodeElement { id, addr, state: NodeStatus::New(0), detail: None });
+        self.items.insert(id, NodeElement::new(id, addr));
+    }
+
+    pub(crate) fn get(&self, id: u64) -> Option<&NodeElement> {
+        self.items.get(&id)
+    }
+
+    pub(crate) fn update(&mut self, id: u64, detail: NodeDetail) {
+        if let Some(node) = self.items.get_mut(&id) {
+            node.detail = Some(detail);
+        }
     }
 
     pub fn next(&mut self) {
@@ -69,7 +126,7 @@ impl NodeList {
         self.state.select(Some(i));
     }
 
-    pub fn ids(&self) -> Vec<u64> {
-        self.items.keys().cloned().collect()
+    pub(crate) fn ids(&self) -> Vec<NodeElement> {
+        self.items.values().cloned().collect()
     }
 }
