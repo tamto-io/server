@@ -92,7 +92,7 @@ impl ChordNode for ChordService {
 
         let result = self
             .node
-            .find_successor(request.get_ref().id)
+            .find_successor(request.get_ref().id.into())
             .await
             .map_err(Self::map_error)?;
 
@@ -171,7 +171,7 @@ impl From<Option<chord_rs::Node>> for GetPredecessorResponse {
 impl From<chord_rs::Node> for chord_proto::Node {
     fn from(node: chord_rs::Node) -> Self {
         chord_proto::Node {
-            id: node.id(),
+            id: node.id().into(),
             ip: Some(node.addr().ip().into()),
             port: node.addr().port() as i32,
         }

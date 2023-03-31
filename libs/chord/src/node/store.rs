@@ -111,7 +111,7 @@ impl Db {
         let state = self.shared.state.lock().unwrap();
 
         for finger in state.finger_table.iter().rev() {
-            if finger.start > node_id && finger.node.id < id && finger.start < id {
+            if finger.start > node_id && finger.node.id.0 < id && finger.start < id {
                 return finger.node.clone();
             } else if id < node_id {
                 // if the id is smaller than the current node, we return the last finger
@@ -139,12 +139,14 @@ impl Db {
 
 #[cfg(test)]
 mod tests {
+    use crate::NodeId;
+
     use super::*;
     use std::net::SocketAddr;
 
     #[test]
     fn test_new() {
-        let node = Node::with_id(1, SocketAddr::from(([127, 0, 0, 1], 42001)));
+        let node = Node::with_id(NodeId(1), SocketAddr::from(([127, 0, 0, 1], 42001)));
         let store = NodeStore::new(node.clone());
         let store = store.db();
 
@@ -154,9 +156,9 @@ mod tests {
 
     #[test]
     fn test_predecessor() {
-        let node = Node::with_id(1, SocketAddr::from(([127, 0, 0, 1], 42001)));
+        let node = Node::with_id(NodeId(1), SocketAddr::from(([127, 0, 0, 1], 42001)));
         let store = NodeStore::new(node.clone());
-        let predecessor = Node::with_id(2, SocketAddr::from(([127, 0, 0, 1], 42002)));
+        let predecessor = Node::with_id(NodeId(2), SocketAddr::from(([127, 0, 0, 1], 42002)));
         assert_eq!(store.db().predecessor(), None);
         store.db().set_predecessor(predecessor.clone());
 
@@ -168,9 +170,9 @@ mod tests {
 
     #[test]
     fn test_successor() {
-        let node = Node::with_id(1, SocketAddr::from(([127, 0, 0, 1], 42001)));
+        let node = Node::with_id(NodeId(1), SocketAddr::from(([127, 0, 0, 1], 42001)));
         let store = NodeStore::new(node.clone());
-        let successor = Node::with_id(2, SocketAddr::from(([127, 0, 0, 1], 42002)));
+        let successor = Node::with_id(NodeId(2), SocketAddr::from(([127, 0, 0, 1], 42002)));
         assert_eq!(store.db().successor(), node);
         store.db().set_successor(successor.clone());
 

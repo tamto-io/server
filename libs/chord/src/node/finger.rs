@@ -57,7 +57,7 @@ impl Finger {
         // We start at 1 because the calculation of the finger id is based on the index
         // of the finger. The calculation assumes that the index starts at 1.
         for i in 1..(size + 1) {
-            let finger_id = Self::sized_finger_id(size, node.id, i);
+            let finger_id = Self::sized_finger_id(size, node.id.0, i);
             fingers.push(Finger {
                 start: finger_id,
                 node: node.clone(),
@@ -70,6 +70,8 @@ impl Finger {
 
 #[cfg(test)]
 mod tests {
+    use crate::NodeId;
+
     use super::*;
     use std::net::SocketAddr;
 
@@ -110,7 +112,7 @@ mod tests {
 
     #[test]
     fn it_should_generate_finger_table() {
-        let node = Node::with_id(1, SocketAddr::from(([127, 0, 0, 1], 42001)));
+        let node = Node::with_id(NodeId(1), SocketAddr::from(([127, 0, 0, 1], 42001)));
 
         let fingers = Finger::init_finger_table(node.clone());
 
@@ -124,7 +126,7 @@ mod tests {
         assert_eq!(fingers[15].start, 32769);
         assert_eq!(fingers[63].start, 9223372036854775809);
 
-        let node = Node::with_id(5, SocketAddr::from(([127, 0, 0, 1], 42001)));
+        let node = Node::with_id(NodeId(5), SocketAddr::from(([127, 0, 0, 1], 42001)));
         let fingers = Finger::sized_finger_table(6, node);
 
         assert_eq!(fingers.len(), 6);

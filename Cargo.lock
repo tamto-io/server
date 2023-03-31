@@ -971,6 +971,8 @@ name = "server"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "log",
+ "simplelog",
  "tamto-grpc",
  "tokio",
 ]

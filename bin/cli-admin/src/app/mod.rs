@@ -127,12 +127,12 @@ impl App {
                                     let mut state = shared.state.lock().unwrap();
 
                                     for finger in finger_table {
-                                        if state.node_list.exists(finger.id()) {
+                                        if state.node_list.exists(finger.id().into()) {
                                             continue;
                                         }
                                         log::debug!("Adding node {} to list", finger.id());
 
-                                        state.node_list.add(finger.id(), finger.addr());
+                                        state.node_list.add(finger.id().into(), finger.addr());
                                     }
                                     drop(state);
                                 });

@@ -17,7 +17,7 @@ impl TryFrom<chord_proto::Node> for chord_rs::Node {
 
         let addr = SocketAddr::new(ip, port);
 
-        Ok(chord_rs::Node::with_id(id, addr))
+        Ok(chord_rs::Node::with_id(id.into(), addr))
     }
 }
 

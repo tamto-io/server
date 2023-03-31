@@ -3,6 +3,7 @@ mod node;
 mod service;
 
 use seahash::hash;
+use std::fmt::Display;
 use std::net::SocketAddr;
 
 pub use client::Client;
@@ -10,17 +11,44 @@ pub use service::NodeService;
 
 pub use service::error;
 
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct NodeId(u64);
+
+impl From<SocketAddr> for NodeId {
+    fn from(addr: SocketAddr) -> Self {
+        Self(hash(addr.to_string().as_bytes()))
+    }
+}
+
+impl Into<u64> for NodeId {
+    fn into(self) -> u64 {
+        self.0
+    }
+}
+
+impl From<u64> for NodeId {
+    fn from(id: u64) -> Self {
+        Self(id)
+    }
+}
+
+impl Display for NodeId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 /// A reference to a node in the chord ring
 #[derive(Clone, PartialEq, Debug)]
 pub struct Node {
-    id: u64,
+    id: NodeId,
     addr: SocketAddr,
 }
 
 impl Node {
     pub fn new(addr: SocketAddr) -> Self {
         Self {
-            id: hash(addr.to_string().as_bytes()),
+            id: addr.into(),
             addr,
         }
     }
@@ -33,11 +61,11 @@ impl Node {
         self.addr
     }
 
-    pub fn with_id(id: u64, addr: SocketAddr) -> Self {
+    pub fn with_id(id: NodeId, addr: SocketAddr) -> Self {
         Self { id, addr }
     }
 
-    pub fn id(&self) -> u64 {
+    pub fn id(&self) -> NodeId {
         self.id
     }
 

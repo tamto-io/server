@@ -3,7 +3,7 @@ use std::net::{SocketAddr, IpAddr, Ipv4Addr, Ipv6Addr};
 use crate::server::chord_proto::chord_node_client::ChordNodeClient;
 use crate::server::chord_proto::{FindSuccessorRequest, self, NotifyRequest, GetPredecessorRequest, GetFingerTableRequest};
 use chord_rs::client::ClientError;
-use chord_rs::{Client, Node};
+use chord_rs::{Client, Node, NodeId};
 use tonic::async_trait;
 use tonic::transport::Endpoint;
 
@@ -16,19 +16,21 @@ pub struct ChordGrpcClient {
 #[async_trait]
 impl Client for ChordGrpcClient {
     fn init(addr: SocketAddr) -> Self {
+        log::debug!("Initializing client for {}", addr);
         // TODO: the protocol should be configurable
         let endpoint = Endpoint::from_shared(format!("http://{}", addr)).unwrap();
 
         ChordGrpcClient { endpoint }
     }
 
-    async fn find_successor(&self, id: u64) -> Result<Node, ClientError> {
+    async fn find_successor(&self, id: NodeId) -> Result<Node, ClientError> {
         let mut client = ChordNodeClient::connect(self.endpoint.clone())
             .await
             .unwrap();
 
-        let request = tonic::Request::new(FindSuccessorRequest { id });
-        let response = client.find_successor(request).await.unwrap().into_inner();
+        let request = tonic::Request::new(FindSuccessorRequest { id: id.into() });
+        let response = client.find_successor(request).await;
+        let response = response.unwrap().into_inner();
 
         let node = response.node.unwrap();
         let node: Node = node.try_into().unwrap();
@@ -98,7 +100,7 @@ impl ChordGrpcClient {
     }
 
     pub async fn find_successor(&self, id: u64) -> Result<Node, ClientError> {
-        Client::find_successor(self, id).await
+        Client::find_successor(self, id.into()).await
     }
 }
 

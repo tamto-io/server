@@ -31,7 +31,7 @@ pub(crate) struct NodeInfo {
 
 impl From<chord_rs::Node> for NodeInfo {
     fn from(node: chord_rs::Node) -> Self {
-        Self { id: node.id(), addr: node.addr() }
+        Self { id: node.id().into(), addr: node.addr() }
     }
 }
 
