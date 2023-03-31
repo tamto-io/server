@@ -83,7 +83,6 @@ impl Db {
     /// Get the predecessor of the node
     pub(crate) fn predecessor(&self) -> Option<Node> {
         let state = self.shared.state.lock().unwrap();
-        // state.entries.get(key).map(|entry| entry.data.clone())
         state.predecessor.clone()
     }
 
@@ -130,6 +129,11 @@ impl Db {
         state.finger_table[finger_id].node = node;
 
         drop(state);
+    }
+
+    pub(crate) fn finger_table(&self) -> Vec<Finger> {
+        let state = self.shared.state.lock().unwrap();
+        state.finger_table.clone()
     }
 }
 

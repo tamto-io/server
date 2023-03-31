@@ -1,7 +1,7 @@
 use std::net::{SocketAddr, IpAddr, Ipv4Addr, Ipv6Addr};
 
 use crate::server::chord_proto::chord_node_client::ChordNodeClient;
-use crate::server::chord_proto::{FindSuccessorRequest, self};
+use crate::server::chord_proto::{FindSuccessorRequest, self, NotifyRequest, GetPredecessorRequest, GetFingerTableRequest};
 use chord_rs::client::ClientError;
 use chord_rs::{Client, Node};
 use tonic::async_trait;
@@ -27,15 +27,13 @@ impl Client for ChordGrpcClient {
             .await
             .unwrap();
 
-        // let mut client = ChordNodeClient::new(self.channel.clone());
-
         let request = tonic::Request::new(FindSuccessorRequest { id });
         let response = client.find_successor(request).await.unwrap().into_inner();
 
         let node = response.node.unwrap();
         let node: Node = node.try_into().unwrap();
 
-        println!("response: {:?}", node.addr());
+        // println!("response: {:?}", node.addr());
 
         Ok(node)
     }
@@ -44,30 +42,53 @@ impl Client for ChordGrpcClient {
         unimplemented!()
     }
 
-    fn predecessor(&self) -> Result<Option<Node>, ClientError> {
-        unimplemented!()
+    async fn predecessor(&self) -> Result<Option<Node>, ClientError> {
+        let mut client = ChordNodeClient::connect(self.endpoint.clone())
+            .await
+            .unwrap();
+
+        let request = tonic::Request::new(GetPredecessorRequest {});
+
+        let response = client.get_predecessor(request).await.unwrap().into_inner();
+
+        if let Some(node) = response.node {
+            let node: Node = node.try_into().unwrap();
+            return Ok(Some(node));
+        }
+
+        Ok(None)
     }
 
-    fn notify(&self, _predecessor: Node) -> Result<(), ClientError> {
-        unimplemented!()
+    async fn notify(&self, predecessor: Node) -> Result<(), ClientError> {
+        let mut client = ChordNodeClient::connect(self.endpoint.clone())
+            .await
+            .unwrap();
+
+        let request = tonic::Request::new(NotifyRequest { node: Some(predecessor.into()) });
+        client.notify(request).await.unwrap();
+
+        Ok(())
+    }
+
+    async fn get_finger_table(&self) -> Result<Vec<Node>, ClientError> {
+        let mut client = ChordNodeClient::connect(self.endpoint.clone())
+            .await
+            .unwrap();
+
+        let request = tonic::Request::new(GetFingerTableRequest {});
+        let response = client.get_finger_table(request).await.unwrap();
+
+        let response = response.into_inner();
+
+        let nodes = response.nodes.into_iter()
+            .map(|node| node.try_into().unwrap())
+            .collect();
+
+        Ok(nodes)
     }
 
     fn ping(&self) -> Result<(), ClientError> {
         unimplemented!()
-    }
-}
-
-impl TryFrom<chord_proto::Node> for chord_rs::Node {
-    type Error = std::net::AddrParseError;
-
-    fn try_from(node: chord_proto::Node) -> Result<Self, Self::Error> {
-        let ip = node.ip.unwrap();
-        let ip = ip.try_into().unwrap();
-        let port = node.port as u16;
-
-        let addr = SocketAddr::new(ip, port);
-
-        Ok(chord_rs::Node::new(addr))
     }
 }
 

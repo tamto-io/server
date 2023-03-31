@@ -25,19 +25,27 @@ pub trait Client {
     fn successor(&self) -> Result<Node, ClientError>;
 
     /// Get the predecessor of the node
-    fn predecessor(&self) -> Result<Option<Node>, ClientError>;
+    async fn predecessor(&self) -> Result<Option<Node>, ClientError>;
 
     /// Notify the node about a new predecessor
     ///
     /// # Arguments
     ///
     /// * `predecessor` - The new predecessor
-    fn notify(&self, predecessor: Node) -> Result<(), ClientError>;
+    async fn notify(&self, predecessor: Node) -> Result<(), ClientError>;
+
+    /// Get the finger table of the node
+    /// 
+    /// # Returns
+    /// 
+    /// A vector of nodes
+    async fn get_finger_table(&self) -> Result<Vec<Node>, ClientError>;
 
     /// Ping the node
     fn ping(&self) -> Result<(), ClientError>;
 }
 
+#[derive(Debug)]
 pub enum ClientError {
     ConnectionFailed(Node),
     Unexpected(String),

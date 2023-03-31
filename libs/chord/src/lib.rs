@@ -20,7 +20,7 @@ pub struct Node {
 impl Node {
     pub fn new(addr: SocketAddr) -> Self {
         Self {
-            id: hash(&addr.to_string().as_bytes()),
+            id: hash(addr.to_string().as_bytes()),
             addr,
         }
     }
@@ -79,5 +79,24 @@ impl Node {
         } else {
             node1 < id || id <= node2
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_between() {
+        assert_eq!(Node::is_between_on_ring(10, 5, 5), true);
+        assert_eq!(Node::is_between_on_ring(1, 5, 5), true);
+        assert_eq!(Node::is_between_on_ring(10, 5, 1), true);
+        assert_eq!(Node::is_between_on_ring(5, 5, 5), true);
+        assert_eq!(Node::is_between_on_ring(4, 1, 5), true);
+        assert_eq!(Node::is_between_on_ring(5, 1, 5), true);
+
+        assert_eq!(Node::is_between_on_ring(1, 1, 5), false);
+        assert_eq!(Node::is_between_on_ring(1, 2, 5), false);
+
     }
 }

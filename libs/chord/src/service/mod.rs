@@ -47,14 +47,19 @@ impl<C: Client> NodeService<C> {
     ///
     /// * `id` - The id to find the successor for
     pub async fn find_successor(&self, id: u64) -> Result<Node, error::ServiceError> {
-        if Node::is_between_on_ring(id, self.id, self.store().successor().id) {
-            Ok(self.store().successor().clone())
+        let successor = self.store().successor();
+        if Node::is_between_on_ring(id, self.id, successor.id) {
+            Ok(successor.clone())
         } else {
             let n = self.closest_preceding_node(id);
             let client: C = n.client();
             let successor = client.find_successor(id).await?;
             Ok(successor)
         }
+    }
+
+    pub async fn get_predecessor(&self) -> Result<Option<Node>, error::ServiceError> {
+        Ok(self.store().predecessor())
     }
 
     /// Join the chord ring.
@@ -101,9 +106,9 @@ impl<C: Client> NodeService<C> {
     /// > **Note**
     /// >
     /// > This method should be called periodically.
-    pub fn stabilize(&self) -> Result<(), error::ServiceError> {
+    pub async fn stabilize(&self) -> Result<(), error::ServiceError> {
         let client: C = self.store().successor().client();
-        let result = client.predecessor();
+        let result = client.predecessor().await;
         if let Ok(Some(x)) = result {
             if Node::is_between_on_ring(x.id.clone(), self.id, self.store().successor().id) {
                 self.store().set_successor(x);
@@ -114,7 +119,7 @@ impl<C: Client> NodeService<C> {
         client.notify(Node {
             id: self.id,
             addr: self.addr,
-        })?;
+        }).await?;
 
         Ok(())
     }
@@ -153,6 +158,13 @@ impl<C: Client> NodeService<C> {
                 // self.store().finger_table[i].node = successor;
             }
         }
+    }
+
+    /// Get finger table
+    /// 
+    /// This method is used to get the finger table of the node.
+    pub fn finger_table(&self) -> Vec<Finger> {
+        self.store().finger_table()
     }
 
     fn closest_preceding_node(&self, id: u64) -> Node {

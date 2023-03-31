@@ -1,6 +1,6 @@
 use crate::Node;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Finger {
     pub(crate) start: u64,
     pub node: Node,
