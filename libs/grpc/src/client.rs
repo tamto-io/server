@@ -9,7 +9,7 @@ use tonic::transport::Endpoint;
 
 #[derive(Debug)]
 pub struct ChordGrpcClient {
-    endpoint: Endpoint,
+    pub(crate) endpoint: Endpoint,
     // client: ChordNodeClient<Channel>,
 }
 
@@ -30,6 +30,10 @@ impl Client for ChordGrpcClient {
 
         let request = tonic::Request::new(FindSuccessorRequest { id: id.into() });
         let response = client.find_successor(request).await;
+        if let Err(err) = response {
+            // log::error!("Error: {:?}", err);
+            return Err(ClientError::Unexpected(err.to_string()));
+        }
         let response = response.unwrap().into_inner();
 
         let node = response.node.unwrap();

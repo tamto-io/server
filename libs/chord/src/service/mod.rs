@@ -2,8 +2,10 @@ use crate::client::ClientError;
 use crate::node::store::{NodeStore, Db};
 use crate::node::Finger;
 use crate::{Client, Node, NodeId};
+use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::net::SocketAddr;
+use std::sync::{Mutex, Arc};
 
 #[derive(Debug)]
 pub struct NodeService<C: Client> {
@@ -11,9 +13,10 @@ pub struct NodeService<C: Client> {
     addr: SocketAddr,
     store: NodeStore,
     phantom: PhantomData<C>,
+    clients: Arc<Mutex<HashMap<NodeId, C>>>,
 }
 
-impl<C: Client> NodeService<C> {
+impl<C: Client + Clone> NodeService<C> {
     pub fn new(socket_addr: SocketAddr) -> Self {
         let id = socket_addr.into();
         Self::with_id(id, socket_addr)
@@ -26,6 +29,7 @@ impl<C: Client> NodeService<C> {
             addr,
             store,
             phantom: PhantomData,
+            clients: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -35,6 +39,18 @@ impl<C: Client> NodeService<C> {
 
     pub(crate) fn store(&self) -> Db {
         self.store.db()
+    }
+
+    pub(crate) fn client(&self, node: Node) -> C {
+        let mut clients = self.clients.lock().unwrap();
+        if let Some(client) = clients.get(&node.id) {
+            client.clone()
+        } else {
+            log::info!("Creating new client for node {}, endpoint: {}", node.id, node.addr);
+            let client: C = node.client();
+            clients.insert(node.id, client.clone());
+            client
+        }
     }
 
     /// Find the successor of the given id.
@@ -51,7 +67,13 @@ impl<C: Client> NodeService<C> {
             Ok(successor.clone())
         } else {
             let n = self.closest_preceding_node(id);
-            let client: C = n.client();
+            let client: C = if n.id == self.id {
+                // TODO: this should not be necessary
+                self.client(self.store().successor())
+            } else {
+                self.client(n)
+            };
+            // let client: C = self.client(n.clone());
             let successor = client.find_successor(id).await?;
             Ok(successor)
         }
@@ -70,7 +92,7 @@ impl<C: Client> NodeService<C> {
     ///
     /// * `node` - The node to join the ring with. It's an existing node in the ring.
     pub async fn join(&self, node: Node) -> Result<(), error::ServiceError> {
-        let client: C = node.client();
+        let client: C = self.client(node);
         let successor = client.find_successor(self.id).await?;
         self.store().set_successor(successor);
 
@@ -107,7 +129,9 @@ impl<C: Client> NodeService<C> {
     /// >
     /// > This method should be called periodically.
     pub async fn stabilize(&self) -> Result<(), error::ServiceError> {
-        let client: C = self.store().successor().client();
+        let successor = self.store().successor();
+        let client: C = self.client(successor);
+        // let client: C = self.store().successor().client();
         let result = client.predecessor().await;
         if let Ok(Some(x)) = result {
             if Node::is_between_on_ring(x.id.clone().0, self.id.0, self.store().successor().id.0) {
@@ -115,7 +139,9 @@ impl<C: Client> NodeService<C> {
             }
         }
 
-        let client: C = self.store().successor().client();
+        let successor = self.store().successor();
+        let client: C = self.client(successor);
+        // let client: C = self.store().successor().client();
         client.notify(Node {
             id: self.id,
             addr: self.addr,
@@ -134,7 +160,8 @@ impl<C: Client> NodeService<C> {
     /// > This method should be called periodically.
     pub fn check_predecessor(&self) {
         if let Some(predecessor) = self.store().predecessor() {
-            let client: C = predecessor.client();
+            let client: C = self.client(predecessor);
+            // let client: C = predecessor.client();
             if let Err(ClientError::ConnectionFailed(_)) = client.ping() {
                 self.store().unset_predecessor();
             };
@@ -167,8 +194,22 @@ impl<C: Client> NodeService<C> {
         self.store().finger_table()
     }
 
+    /// Get closest preceding node
+    /// 
+    /// This method is used to get the closest preceding node of the given id.
+    /// It will iterate over the finger table and return the closest node to the given id.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `id` - The id to find the closest preceding node for
+    /// 
+    /// # Returns
+    /// 
+    /// The closest preceding node
     fn closest_preceding_node(&self, id: NodeId) -> Node {
-        self.store().closest_preceding_node(self.id.0, id.0)
+        self.store()
+            .closest_preceding_node(self.id.0, id.0)
+            .unwrap_or(Node::new(self.addr))
     }
 }
 

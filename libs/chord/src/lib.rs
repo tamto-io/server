@@ -11,7 +11,7 @@ pub use service::NodeService;
 
 pub use service::error;
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug, Eq, Hash)]
 pub struct NodeId(u64);
 
 impl From<SocketAddr> for NodeId {
@@ -108,6 +108,14 @@ impl Node {
             node1 < id || id <= node2
         }
     }
+
+    pub fn is_between_on_ring_exclusive(id: u64, node1: u64, node2: u64) -> bool {
+        if node1 < node2 {
+            node1 < id && id < node2
+        } else {
+            node1 < id || id < node2
+        }
+    }
 }
 
 #[cfg(test)]
@@ -125,6 +133,19 @@ mod tests {
 
         assert_eq!(Node::is_between_on_ring(1, 1, 5), false);
         assert_eq!(Node::is_between_on_ring(1, 2, 5), false);
+    }
+
+    #[test]
+    fn test_is_between_exclusive() {
+        assert_eq!(Node::is_between_on_ring_exclusive(10, 5, 5), true);
+        assert_eq!(Node::is_between_on_ring_exclusive(1, 5, 5), true);
+        assert_eq!(Node::is_between_on_ring_exclusive(10, 5, 1), true);
+        assert_eq!(Node::is_between_on_ring_exclusive(5, 5, 5), false);
+        assert_eq!(Node::is_between_on_ring_exclusive(4, 1, 5), true);
+        assert_eq!(Node::is_between_on_ring_exclusive(5, 1, 5), false);
+
+        assert_eq!(Node::is_between_on_ring_exclusive(1, 1, 5), false);
+        assert_eq!(Node::is_between_on_ring_exclusive(1, 2, 5), false);
 
     }
 }

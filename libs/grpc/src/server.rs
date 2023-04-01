@@ -14,10 +14,20 @@ use crate::client::ChordGrpcClient;
 use self::chord_proto::{FindSuccessorRequest, FindSuccessorResponse, GetPredecessorRequest, GetPredecessorResponse, NotifyRequest, NotifyResponse, GetFingerTableRequest, GetFingerTableResponse};
 
 pub mod chord_proto {
+    use crate::client::ChordGrpcClient;
+
     include!(concat!(env!("OUT_DIR"), "/chord.rs"));
+
+    impl Clone for ChordGrpcClient {
+        fn clone(&self) -> Self {
+            Self {
+                endpoint: self.endpoint.clone(),
+            }
+        }
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ChordService {
     node: Arc<NodeService<ChordGrpcClient>>,
 }

@@ -105,23 +105,35 @@ impl Db {
         state.finger_table[0].node.clone()
     }
 
-    /// TODO: Make sure the lock is dropped
-    ///       What happens if the finger is returned in the loop? Is the lock dropped?
-    pub(crate) fn closest_preceding_node(&self, node_id: u64, id: u64) -> Node {
+    // TODO: Make sure the lock is dropped
+    //       What happens if the finger is returned in the loop? Is the lock dropped?
+    /// Get the closest preceding node
+    /// This is used to find a node that is possibly responsible for a key
+    /// 
+    /// # Arguments
+    /// 
+    /// * `node_id` - The id of the current node
+    /// * `id` - The id of the key we are looking for
+    /// 
+    /// # Returns
+    /// 
+    /// The closest preceding node for the key
+    pub(crate) fn closest_preceding_node(&self, node_id: u64, id: u64) -> Option<Node> {
         let state = self.shared.state.lock().unwrap();
+        // Node::is_between_on_ring(id, node1, node2)
 
         for finger in state.finger_table.iter().rev() {
-            if finger.start > node_id && finger.node.id.0 < id && finger.start < id {
-                return finger.node.clone();
-            } else if id < node_id {
-                // if the id is smaller than the current node, we return the last finger
-                return finger.node.clone();
+            if Node::is_between_on_ring_exclusive(finger.start, node_id, id) {
+                return Some(finger.node.clone());
             }
+            // if finger.start > node_id && finger.start < id {
+            //     return finger.node.clone();
+            // }
         }
 
         drop(state);
 
-        self.successor()
+        None
     }
 
     pub(crate) fn update_finger(&self, finger_id: usize, node: Node) {
@@ -177,5 +189,28 @@ mod tests {
         store.db().set_successor(successor.clone());
 
         assert_eq!(store.db().successor(), successor);
+    }
+
+    #[test]
+    fn test_closest_preceding_node() {
+        let node = Node::with_id(NodeId(10), SocketAddr::from(([127, 0, 0, 1], 42001)));
+        let store = NodeStore::new(node.clone());
+        let successor = Node::with_id(NodeId(20), SocketAddr::from(([127, 0, 0, 1], 42002)));
+        let predecessor = Node::with_id(NodeId(1), SocketAddr::from(([127, 0, 0, 1], 42003)));
+        store.db().set_predecessor(predecessor.clone());
+
+        store.db().finger_table().iter().enumerate().for_each(|(i, finger)| {
+            if finger.start < 20 {
+                store.db().update_finger(i, successor.clone());
+            } else {
+                store.db().update_finger(i, predecessor.clone());
+            }
+        });
+
+        assert_eq!(store.db().closest_preceding_node(10, 1), Some(predecessor.clone()));
+        assert_eq!(store.db().closest_preceding_node(10, 10), Some(predecessor.clone()));
+        assert_eq!(store.db().closest_preceding_node(10, 15), Some(successor.clone()));
+        assert_eq!(store.db().closest_preceding_node(10, 21), Some(successor));
+        assert_eq!(store.db().closest_preceding_node(10, 28), Some(predecessor));
     }
 }
