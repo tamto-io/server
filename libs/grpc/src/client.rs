@@ -1,45 +1,66 @@
 use std::net::{SocketAddr, IpAddr, Ipv4Addr, Ipv6Addr};
+use std::sync::{Arc, Mutex};
 
 use crate::server::chord_proto::chord_node_client::ChordNodeClient;
 use crate::server::chord_proto::{FindSuccessorRequest, self, NotifyRequest, GetPredecessorRequest, GetFingerTableRequest};
 use chord_rs::client::ClientError;
 use chord_rs::{Client, Node, NodeId};
 use tonic::async_trait;
-use tonic::transport::Endpoint;
+use tonic::transport::{Endpoint, Channel};
 
 #[derive(Debug)]
 pub struct ChordGrpcClient {
-    pub(crate) endpoint: Endpoint,
-    // client: ChordNodeClient<Channel>,
+    // pub(crate) endpoint: Endpoint,
+    pub(crate) client: ClientGuard,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct ClientGuard {
+    client: Arc<Mutex<Option<ChordNodeClient<Channel>>>>
+}
+
+impl ClientGuard {
+    fn new() -> Self {
+        Self {
+            client: Arc::new(Mutex::new(None))
+        }
+    }
 }
 
 #[async_trait]
 impl Client for ChordGrpcClient {
     fn init(addr: SocketAddr) -> Self {
         log::debug!("Initializing client for {}", addr);
-        // TODO: the protocol should be configurable
         let endpoint = Endpoint::from_shared(format!("http://{}", addr)).unwrap();
+        let client_guard = ClientGuard::new();
+        let client_guard_clone = client_guard.clone();
 
-        ChordGrpcClient { endpoint }
+        tokio::spawn(async move {
+            let client = ChordNodeClient::connect(endpoint.clone()).await;
+            if let Err(err) = &client {
+                log::error!("Failed to initialize client: {:?}", err);
+            } else {
+                log::debug!("Client initialized");
+                client_guard_clone.client.lock().unwrap().replace(client.unwrap());
+            }
+        });
+
+        ChordGrpcClient { client: client_guard }
     }
 
     async fn find_successor(&self, id: NodeId) -> Result<Node, ClientError> {
-        let mut client = ChordNodeClient::connect(self.endpoint.clone())
-            .await
-            .unwrap();
+        let mut client = self.client()?;
 
         let request = tonic::Request::new(FindSuccessorRequest { id: id.into() });
         let response = client.find_successor(request).await;
         if let Err(err) = response {
-            // log::error!("Error: {:?}", err);
+            log::warn!("Failed to find successor: {:?}", err);
             return Err(ClientError::Unexpected(err.to_string()));
         }
         let response = response.unwrap().into_inner();
 
         let node = response.node.unwrap();
         let node: Node = node.try_into().unwrap();
-
-        // println!("response: {:?}", node.addr());
 
         Ok(node)
     }
@@ -49,9 +70,7 @@ impl Client for ChordGrpcClient {
     }
 
     async fn predecessor(&self) -> Result<Option<Node>, ClientError> {
-        let mut client = ChordNodeClient::connect(self.endpoint.clone())
-            .await
-            .unwrap();
+        let mut client = self.client()?;
 
         let request = tonic::Request::new(GetPredecessorRequest {});
 
@@ -66,9 +85,7 @@ impl Client for ChordGrpcClient {
     }
 
     async fn notify(&self, predecessor: Node) -> Result<(), ClientError> {
-        let mut client = ChordNodeClient::connect(self.endpoint.clone())
-            .await
-            .unwrap();
+        let mut client = self.client()?;
 
         let request = tonic::Request::new(NotifyRequest { node: Some(predecessor.into()) });
         client.notify(request).await.unwrap();
@@ -77,9 +94,7 @@ impl Client for ChordGrpcClient {
     }
 
     async fn get_finger_table(&self) -> Result<Vec<Node>, ClientError> {
-        let mut client = ChordNodeClient::connect(self.endpoint.clone())
-            .await
-            .unwrap();
+        let mut client = self.client()?;
 
         let request = tonic::Request::new(GetFingerTableRequest {});
         let response = client.get_finger_table(request).await.unwrap();
@@ -103,8 +118,33 @@ impl ChordGrpcClient {
         Self::init(addr)
     }
 
+    pub async fn init_async(addr: SocketAddr) -> Result<Self, ClientError> {
+        let endpoint = Endpoint::from_shared(format!("http://{}", addr)).unwrap();
+        let client_guard = ClientGuard::new();
+        let client_guard_clone = client_guard.clone();
+
+        let client = ChordNodeClient::connect(endpoint.clone()).await;
+        if let Err(err) = &client {
+            log::error!("Failed to initialize client: {:?}", err);
+            Err(ClientError::Unexpected(err.to_string()))
+        } else {
+            log::debug!("Client initialized");
+            client_guard_clone.client.lock().unwrap().replace(client.unwrap());
+
+            Ok(ChordGrpcClient { client: client_guard })
+        }
+    }
+
     pub async fn find_successor(&self, id: u64) -> Result<Node, ClientError> {
         Client::find_successor(self, id.into()).await
+    }
+
+    pub fn client(&self) -> Result<ChordNodeClient<Channel>, ClientError> {
+        if let Some(client) = self.client.client.lock().unwrap().clone() {
+            Ok(client)
+        } else {
+            Err(ClientError::NotInitialized)
+        }
     }
 }
 

@@ -120,7 +120,7 @@ impl App {
                         match event {
                             UpdateEvent::NodeAdd(addr) => {
                                 tokio::spawn(async move {
-                                    let client = ChordGrpcClient::init(addr);
+                                    let client = ChordGrpcClient::init_async(addr).await.unwrap();
                                     let finger_table = client.get_finger_table().await.unwrap();
 
                                     let shared = shared.clone();
@@ -153,7 +153,7 @@ impl App {
                                         let state = shared.state.lock().unwrap();
                                         state.node_list.get(id).unwrap().clone()
                                     };
-                                    let client = ChordGrpcClient::init(node.addr);
+                                    let client = ChordGrpcClient::init_async(node.addr).await.unwrap();
                                     let predecessor = client.predecessor().await.unwrap();
                                     let successor = client.successor().await.unwrap().into();
 

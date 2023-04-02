@@ -42,7 +42,11 @@ impl<C: Client + Clone> NodeService<C> {
     }
 
     pub(crate) fn client(&self, node: Node) -> C {
-        let mut clients = self.clients.lock().unwrap();
+        let lock = self.clients.lock();
+        if let Err(e) = &lock {
+            log::error!("Failed to lock clients: {}", e);
+        }
+        let mut clients = lock.unwrap();
         if let Some(client) = clients.get(&node.id) {
             client.clone()
         } else {
@@ -67,13 +71,7 @@ impl<C: Client + Clone> NodeService<C> {
             Ok(successor.clone())
         } else {
             let n = self.closest_preceding_node(id);
-            let client: C = if n.id == self.id {
-                // TODO: this should not be necessary
-                self.client(self.store().successor())
-            } else {
-                self.client(n)
-            };
-            // let client: C = self.client(n.clone());
+            let client: C = self.client(n);
             let successor = client.find_successor(id).await?;
             Ok(successor)
         }
@@ -112,8 +110,10 @@ impl<C: Client + Clone> NodeService<C> {
         if predecessor.is_none()
             || Node::is_between_on_ring(node.id.clone().0, predecessor.unwrap().id.0, self.id.0)
         {
-            println!("Setting predecessor to {:?}", node);
-            self.store().set_predecessor(node);
+            log::debug!("Setting predecessor to {:?}", node);
+            {
+                self.store().set_predecessor(node);
+            }
         }
     }
 
@@ -182,7 +182,8 @@ impl<C: Client + Clone> NodeService<C> {
             let result = { self.find_successor(NodeId(finger_id)).await };
             if let Ok(successor) = result {
                 self.store().update_finger(i.into(), successor)
-                // self.store().finger_table[i].node = successor;
+            } else {
+                log::error!("Failed to fix finger: {:?}", result.unwrap_err());
             }
         }
     }

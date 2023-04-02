@@ -21,10 +21,15 @@ pub mod chord_proto {
     impl Clone for ChordGrpcClient {
         fn clone(&self) -> Self {
             Self {
-                endpoint: self.endpoint.clone(),
+                // endpoint: self.endpoint.clone(),
+                client: self.client.clone(),
             }
         }
     }
+
+    unsafe impl Sync for ChordGrpcClient {}
+    unsafe impl Send for ChordGrpcClient {}
+
 }
 
 #[derive(Debug, Clone)]
@@ -40,17 +45,29 @@ impl ChordService {
             let node = Node::new(ring);
             let node_service = node_service.clone();
             tokio::spawn(async move {
-                println!("Joining ring: {:?}", ring);
-                node_service.join(node).await.unwrap();
+                // TODO: make this configurable
+                for i in 0..5 {
+                    let node = node.clone();
+                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                    log::info!("{} attempt to join ring: {:?}", i, ring);
+
+                    if let Ok(_) = node_service.join(node).await {
+                        break;
+                    }
+                }
             });
         }
 
         let service = node_service.clone();
         tokio::spawn(async move {
+            // TODO: remove this and make it wait for the node to join the ring before starting stabilization
+            tokio::time::sleep(std::time::Duration::from_secs(3)).await;
             loop {
                 tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                println!("Stabilizing...");
-                service.stabilize().await.unwrap();
+                // log::info!("Stabilizing...");
+                if let Err(err) = service.stabilize().await {
+                    log::error!("Stabilize error: {:?}", err);
+                }
             }
         });
 
@@ -65,9 +82,11 @@ impl ChordService {
 
         let service = node_service.clone();
         tokio::spawn(async move {
+            // TODO: remove this and make it wait for the node to join the ring before starting fixing fingers
+            tokio::time::sleep(std::time::Duration::from_secs(3)).await;
             loop {
                 tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                println!("Fixing fingers...");
+                // log::info!("Fixing fingers...");
                 service.fix_fingers().await;
             }
         });
@@ -123,7 +142,6 @@ impl ChordNode for ChordService {
     }
 
     async fn notify(&self, request: Request<NotifyRequest>) -> Result<Response<NotifyResponse>, Status> {
-
         let node = request.get_ref().node.clone();
         let node = Node::try_from(node.unwrap()).unwrap();
 

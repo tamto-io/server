@@ -48,6 +48,7 @@ pub trait Client {
 #[derive(Debug)]
 pub enum ClientError {
     ConnectionFailed(Node),
+    NotInitialized,
     Unexpected(String),
 }
 
@@ -57,6 +58,7 @@ impl Display for ClientError {
             ClientError::ConnectionFailed(node) => {
                 write!(f, "Connection to node {} failed", node.addr())
             }
+            ClientError::NotInitialized => write!(f, "Client not initialized"),
             ClientError::Unexpected(message) => write!(f, "{}", message),
         }
     }

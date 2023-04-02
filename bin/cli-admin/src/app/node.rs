@@ -1,4 +1,4 @@
-use std::{net::SocketAddr, collections::HashMap, time::Instant};
+use std::{net::SocketAddr, collections::{HashMap, BTreeMap}, time::Instant};
 
 use tui::widgets::{ListState, ListItem};
 
@@ -68,14 +68,14 @@ impl NodeElement {
 }
 
 pub struct NodeList {
-    items: HashMap<u64, NodeElement>,
+    items: BTreeMap<u64, NodeElement>,
 
     pub state: ListState,
 }
 
 impl Default for NodeList {
     fn default() -> Self {
-        Self { items: HashMap::new(), state: ListState::default() }
+        Self { items: BTreeMap::new(), state: ListState::default() }
     }
 }
 

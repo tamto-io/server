@@ -66,7 +66,7 @@ impl Db {
     ///
     /// * `predecessor` - The predecessor node
     pub(crate) fn set_predecessor(&self, predecessor: Node) {
-        let mut state = self.shared.state.lock().unwrap();
+        let mut state = self.shared_state();
         state.predecessor = Some(predecessor);
 
         drop(state)
@@ -74,7 +74,7 @@ impl Db {
 
     /// Unset the predecessor of the node
     pub(crate) fn unset_predecessor(&self) {
-        let mut state = self.shared.state.lock().unwrap();
+        let mut state = self.shared_state();
         state.predecessor = None;
 
         drop(state)
@@ -82,7 +82,7 @@ impl Db {
 
     /// Get the predecessor of the node
     pub(crate) fn predecessor(&self) -> Option<Node> {
-        let state = self.shared.state.lock().unwrap();
+        let state = self.shared_state();
         state.predecessor.clone()
     }
 
@@ -92,7 +92,7 @@ impl Db {
     ///
     /// * `successor` - The successor node
     pub(crate) fn set_successor(&self, successor: Node) {
-        let mut state = self.shared.state.lock().unwrap();
+        let mut state = self.shared_state();
         state.finger_table[0].node = successor;
 
         drop(state)
@@ -100,7 +100,7 @@ impl Db {
 
     /// Get the successor of the node
     pub(crate) fn successor(&self) -> Node {
-        let state = self.shared.state.lock().unwrap();
+        let state = self.shared_state();
 
         state.finger_table[0].node.clone()
     }
@@ -119,33 +119,40 @@ impl Db {
     /// 
     /// The closest preceding node for the key
     pub(crate) fn closest_preceding_node(&self, node_id: u64, id: u64) -> Option<Node> {
-        let state = self.shared.state.lock().unwrap();
-        // Node::is_between_on_ring(id, node1, node2)
+        let state = self.shared_state();
 
-        for finger in state.finger_table.iter().rev() {
-            if Node::is_between_on_ring_exclusive(finger.start, node_id, id) {
+        let fingers = state.finger_table.clone();
+        drop(state);
+
+        for finger in fingers.iter().rev() {
+            if Node::is_between_on_ring_exclusive(finger.node.id.into(), node_id, id) {
                 return Some(finger.node.clone());
             }
-            // if finger.start > node_id && finger.start < id {
-            //     return finger.node.clone();
-            // }
         }
-
-        drop(state);
 
         None
     }
 
     pub(crate) fn update_finger(&self, finger_id: usize, node: Node) {
-        let mut state = self.shared.state.lock().unwrap();
+        let mut state = self.shared_state();
         state.finger_table[finger_id].node = node;
 
         drop(state);
     }
 
     pub(crate) fn finger_table(&self) -> Vec<Finger> {
-        let state = self.shared.state.lock().unwrap();
+        let state = self.shared_state();
         state.finger_table.clone()
+    }
+
+    fn shared_state(&self) -> std::sync::MutexGuard<State> {
+        let lock = self.shared.state.lock();
+        if let Ok(state) = lock {
+            return state;
+        } else {
+            log::error!("Could not lock state, error: {}", lock.unwrap_err());
+            panic!("Could not lock state");
+        }
     }
 }
 
