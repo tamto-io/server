@@ -1,4 +1,6 @@
 use std::{io, time::Duration, sync::mpsc, fs::OpenOptions};
+use clap::Parser;
+use cli::{Cli, LogLevel};
 use tui::{
     backend::CrosstermBackend,
     Terminal
@@ -16,6 +18,7 @@ use simplelog::*;
 use std::fs::File;
 
 mod app;
+mod cli;
 mod ui;
 use app::{App, UiWidget, ScrollEvent};
 
@@ -28,7 +31,8 @@ pub enum IoEvent {
 
 #[tokio::main]
 async fn main() -> Result<(), io::Error> {
-    setup_logging();
+    let cli = Cli::parse();
+    setup_logging(cli.log_level, cli.log_file);
     let (tx, rx) = mpsc::channel();
     let app = App::new(tx.clone());
 
@@ -37,7 +41,7 @@ async fn main() -> Result<(), io::Error> {
 
     // Add some dummy nodes
     {
-        app.add_node(123, "[::1]:42000".parse().unwrap());
+        app.add_node(123, cli.ring);
     }
 
     let mut stdout = io::stdout();
@@ -123,13 +127,26 @@ async fn main() -> Result<(), io::Error> {
 //     Ok(())
 // }
 
-fn setup_logging() {
-    CombinedLogger::init(
-        vec![
-            // TermLogger::new(LevelFilter::Warn, Config::default(), TerminalMode::Mixed, ColorChoice::Auto),
-            WriteLogger::new(LevelFilter::Debug, Config::default(), File::create("ouput.log").unwrap()),
-        ]
-    ).unwrap();
+fn setup_logging(log_level: LogLevel, log_file: Option<String>) {
+    let mut config = ConfigBuilder::new();
+    config.set_time_format_rfc3339();
+    let config = config.build();
+
+
+    let logger: Box<dyn SharedLogger> = if let Some(log_file) = log_file {
+        let output_file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(log_file);
+        if let Err(e) = output_file {
+            panic!("Failed to open log file: {}", e);
+        }
+        WriteLogger::new(log_level.into(), config.clone(), output_file.unwrap())
+    } else {
+        TermLogger::new(log_level.into(), config.clone(), TerminalMode::Stderr, ColorChoice::Auto)
+    };
+
+    CombinedLogger::init(vec![logger]).unwrap();
 
     info!("Logging started");
 }

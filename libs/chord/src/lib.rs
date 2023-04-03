@@ -20,6 +20,12 @@ impl From<SocketAddr> for NodeId {
     }
 }
 
+impl From<String> for NodeId {
+    fn from(key: String) -> Self {
+        Self(hash(key.as_bytes()))
+    }
+}
+
 impl Into<u64> for NodeId {
     fn into(self) -> u64 {
         self.0

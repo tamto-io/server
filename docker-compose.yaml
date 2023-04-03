@@ -1,0 +1,31 @@
+version: "3.7"
+
+services:
+  leader:
+    image: tamto-node
+    build: 
+      context: .
+      target: node
+    ports:
+      - "42000:42000"
+
+  node:
+    image: tamto-node
+    build: 
+      context: .
+      target: node
+    depends_on:
+      - leader
+    environment:
+      - LEADER_HOST=leader
+    deploy:
+      replicas: 10
+
+  admin:
+    image: tamto-admin
+    build: 
+      context: .
+      target: admin
+    depends_on:
+      - leader
+    command: ["tail", "-f", "/dev/null"]
