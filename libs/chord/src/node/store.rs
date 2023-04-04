@@ -105,8 +105,6 @@ impl Db {
         state.finger_table[0].node.clone()
     }
 
-    // TODO: Make sure the lock is dropped
-    //       What happens if the finger is returned in the loop? Is the lock dropped?
     /// Get the closest preceding node
     /// This is used to find a node that is possibly responsible for a key
     /// 

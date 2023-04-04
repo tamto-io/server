@@ -20,12 +20,3 @@ services:
       - LEADER_HOST=leader
     deploy:
       replicas: 10
-
-  admin:
-    image: tamto-admin
-    build: 
-      context: .
-      target: admin
-    depends_on:
-      - leader
-    command: ["tail", "-f", "/dev/null"]
