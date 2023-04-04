@@ -1,6 +1,6 @@
 use std::num::ParseIntError;
 
-use chord_rs::NodeId;
+use chord_rs::{NodeId, Client};
 use tamto_grpc::client::ChordGrpcClient;
 
 use crate::cli::LookupArgs;
@@ -19,7 +19,7 @@ impl CommandExecute for Lookup {
 
         let elapsed = start.elapsed();
         let result = CommandResult {
-            result: format!("Key: {}\nNode:\n  Address: {}\n  Id: {}", self.key, node.addr(), node.id()),
+            result: format!("Id: {}\nNode:\n  Address: {}\n  Id: {}", self.key, node.addr(), node.id()),
             execution: elapsed,
         };
 

@@ -2,10 +2,8 @@ use crate::client::ClientError;
 use crate::node::store::{NodeStore, Db};
 use crate::node::Finger;
 use crate::{Client, Node, NodeId};
-use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::net::SocketAddr;
-use std::sync::{Mutex, Arc};
 
 #[derive(Debug)]
 pub struct NodeService<C: Client> {
@@ -13,7 +11,6 @@ pub struct NodeService<C: Client> {
     addr: SocketAddr,
     store: NodeStore,
     phantom: PhantomData<C>,
-    clients: Arc<Mutex<HashMap<NodeId, C>>>,
 }
 
 impl<C: Client + Clone> NodeService<C> {
@@ -29,7 +26,6 @@ impl<C: Client + Clone> NodeService<C> {
             addr,
             store,
             phantom: PhantomData,
-            clients: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -39,22 +35,6 @@ impl<C: Client + Clone> NodeService<C> {
 
     pub(crate) fn store(&self) -> Db {
         self.store.db()
-    }
-
-    pub(crate) fn client(&self, node: Node) -> C {
-        let lock = self.clients.lock();
-        if let Err(e) = &lock {
-            log::error!("Failed to lock clients: {}", e);
-        }
-        let mut clients = lock.unwrap();
-        if let Some(client) = clients.get(&node.id) {
-            client.clone()
-        } else {
-            log::info!("Creating new client for node {}, endpoint: {}", node.id, node.addr);
-            let client: C = node.client();
-            clients.insert(node.id, client.clone());
-            client
-        }
     }
 
     /// Find the successor of the given id.
@@ -71,7 +51,7 @@ impl<C: Client + Clone> NodeService<C> {
             Ok(successor.clone())
         } else {
             let n = self.closest_preceding_node(id);
-            let client: C = self.client(n);
+            let client: C = n.client().await;
             let successor = client.find_successor(id).await?;
             Ok(successor)
         }
@@ -90,7 +70,7 @@ impl<C: Client + Clone> NodeService<C> {
     ///
     /// * `node` - The node to join the ring with. It's an existing node in the ring.
     pub async fn join(&self, node: Node) -> Result<(), error::ServiceError> {
-        let client: C = self.client(node);
+        let client: C = node.client().await;
         let successor = client.find_successor(self.id).await?;
         self.store().set_successor(successor);
 
@@ -130,7 +110,7 @@ impl<C: Client + Clone> NodeService<C> {
     /// > This method should be called periodically.
     pub async fn stabilize(&self) -> Result<(), error::ServiceError> {
         let successor = self.store().successor();
-        let client: C = self.client(successor);
+        let client: C = successor.client().await;
         // let client: C = self.store().successor().client();
         let result = client.predecessor().await;
         if let Ok(Some(x)) = result {
@@ -140,7 +120,7 @@ impl<C: Client + Clone> NodeService<C> {
         }
 
         let successor = self.store().successor();
-        let client: C = self.client(successor);
+        let client: C = successor.client().await;
         // let client: C = self.store().successor().client();
         client.notify(Node {
             id: self.id,
@@ -158,11 +138,11 @@ impl<C: Client + Clone> NodeService<C> {
     /// > **Note**
     /// >
     /// > This method should be called periodically.
-    pub fn check_predecessor(&self) {
+    pub async fn check_predecessor(&self) {
         if let Some(predecessor) = self.store().predecessor() {
-            let client: C = self.client(predecessor);
+            let client: C = predecessor.client().await;
             // let client: C = predecessor.client();
-            if let Err(ClientError::ConnectionFailed(_)) = client.ping() {
+            if let Err(ClientError::ConnectionFailed(_)) = client.ping().await {
                 self.store().unset_predecessor();
             };
         }

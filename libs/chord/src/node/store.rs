@@ -207,7 +207,7 @@ mod tests {
         store.db().set_predecessor(predecessor.clone());
 
         store.db().finger_table().iter().enumerate().for_each(|(i, finger)| {
-            if finger.start < 20 {
+            if finger._start < 20 {
                 store.db().update_finger(i, successor.clone());
             } else {
                 store.db().update_finger(i, predecessor.clone());

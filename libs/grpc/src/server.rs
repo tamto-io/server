@@ -1,5 +1,5 @@
 use std::{
-    net::{IpAddr, SocketAddr}, sync::Arc,
+    net::{IpAddr, SocketAddr}, sync::Arc, time::Duration,
 };
 
 use chord_proto::chord_node_server::ChordNode;
@@ -21,7 +21,6 @@ pub mod chord_proto {
     impl Clone for ChordGrpcClient {
         fn clone(&self) -> Self {
             Self {
-                // endpoint: self.endpoint.clone(),
                 client: self.client.clone(),
             }
         }
@@ -38,30 +37,38 @@ pub struct ChordService {
 }
 
 impl ChordService {
-    pub fn new(addr: SocketAddr, ring: Option<SocketAddr>) -> Self {
+    pub async fn new(addr: SocketAddr, ring: Option<SocketAddr>) -> Self {
         let node_service = Arc::new(NodeService::new(addr));
 
         if let Some(ring) = ring {
-            let node = Node::new(ring);
             let node_service = node_service.clone();
-            tokio::spawn(async move {
-                // TODO: make this configurable
-                for i in 0..5 {
-                    let node = node.clone();
-                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                    log::info!("{} attempt to join ring: {:?}", i, ring);
+            // TODO: make this configurable
+            const WAIT_BETWEEN_RETRIES: Duration = Duration::from_secs(3);
+            const MAX_RETRIES: u32 = 5;
+            let mut attempt = 0;
+            loop {
+                attempt += 1;
+                log::info!("{} attempt to join ring: {:?}", attempt, ring);
 
-                    if let Ok(_) = node_service.join(node).await {
-                        break;
+                let node = Node::new(ring);
+                tokio::time::sleep(Duration::from_secs(1)).await;
+
+                if let Ok(_) = node_service.join(node).await {
+                    log::info!("Joined ring: {:?}", ring);
+                    break;
+                } else {
+                    if attempt >= MAX_RETRIES {
+                        log::error!("Failed to join ring: {:?}", ring);
+                        panic!("Failed to join ring: {:?}", ring)
                     }
                 }
-            });
+
+                tokio::time::sleep(WAIT_BETWEEN_RETRIES).await;
+            }
         }
 
         let service = node_service.clone();
         tokio::spawn(async move {
-            // TODO: remove this and make it wait for the node to join the ring before starting stabilization
-            tokio::time::sleep(std::time::Duration::from_secs(3)).await;
             loop {
                 tokio::time::sleep(std::time::Duration::from_secs(1)).await;
                 // log::info!("Stabilizing...");
@@ -83,7 +90,7 @@ impl ChordService {
         let service = node_service.clone();
         tokio::spawn(async move {
             // TODO: remove this and make it wait for the node to join the ring before starting fixing fingers
-            tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+            // tokio::time::sleep(std::time::Duration::from_secs(3)).await;
             loop {
                 tokio::time::sleep(std::time::Duration::from_secs(1)).await;
                 // log::info!("Fixing fingers...");
@@ -104,10 +111,22 @@ impl ChordService {
     }
 }
 
+pub enum JoinRingError {
+    ClientError,
+    ServiceError,
+}
+
+impl From<chord_rs::error::ServiceError> for JoinRingError {
+    fn from(error: chord_rs::error::ServiceError) -> Self {
+        match error {
+            chord_rs::error::ServiceError::Unexpected(_) => Self::ServiceError,
+        }
+    }
+}
+
 #[tonic::async_trait]
 impl ChordNode for ChordService {
     async fn ping(&self, _request: Request<PingRequest>) -> Result<Response<PingResponse>, Status> {
-        // println!("Got a request: {:?}", request);
 
         let reply = chord_proto::PingResponse {};
 

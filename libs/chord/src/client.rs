@@ -12,7 +12,10 @@ pub trait Client {
     /// # Arguments
     ///
     /// * `addr` - The node address to connect to
-    fn init(addr: SocketAddr) -> Self;
+    async fn init(addr: SocketAddr) -> Self;
+
+    /// Get the status of the client
+    fn status(&self) -> ClientStatus;
 
     /// Find a successor of a given id.
     ///
@@ -42,7 +45,7 @@ pub trait Client {
     async fn get_finger_table(&self) -> Result<Vec<Node>, ClientError>;
 
     /// Ping the node
-    fn ping(&self) -> Result<(), ClientError>;
+    async fn ping(&self) -> Result<(), ClientError>;
 }
 
 #[derive(Debug)]
@@ -62,4 +65,10 @@ impl Display for ClientError {
             ClientError::Unexpected(message) => write!(f, "{}", message),
         }
     }
+}
+
+pub enum ClientStatus {
+    NotConnected,
+    Connected,
+    Disconnected,
 }

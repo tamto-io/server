@@ -13,7 +13,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let addr = cli.listen;
     println!("Listening on: {}", addr);
-    let chord = ChordService::new(addr, cli.ring);
+    let chord = ChordService::new(addr, cli.ring).await;
 
     let server = Server::builder()
         .add_service(ChordNodeServer::new(chord))

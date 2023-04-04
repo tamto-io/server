@@ -59,8 +59,8 @@ impl Node {
         }
     }
 
-    pub fn client<C: Client>(&self) -> C {
-        C::init(self.addr)
+    pub async fn client<C: Client>(&self) -> C {
+        C::init(self.addr).await
     }
 
     pub fn addr(&self) -> SocketAddr {

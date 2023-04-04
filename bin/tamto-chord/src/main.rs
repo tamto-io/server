@@ -1,3 +1,4 @@
+use chord_rs::Client;
 use clap::Parser;
 use commands::{Error, CommandResult};
 use tamto_grpc::client::ChordGrpcClient;
@@ -18,7 +19,7 @@ async fn main() {
 }
 
 async fn run(cli: Cli) -> Result<CommandResult, Error> {
-    let client = ChordGrpcClient::init_async(cli.ring).await?;
+    let client = ChordGrpcClient::init(cli.ring).await;
 
     CommandExecute::execute(&cli.command, client).await
 }
