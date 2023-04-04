@@ -1,0 +1,21 @@
+[package]
+name = "cli-admin"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "tamto-tui"
+path = "src/tamto-tui.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tamto-grpc = { version = "0.1.0", path = "../../libs/grpc" }
+chord-rs = { version = "0.1.0", path = "../../libs/chord" }
+
+clap = { version = "4.1.13", features = ["derive"]}
+crossterm = "0.26.1"
+tokio = { version = "1.27.0", features = ["rt-multi-thread", "macros", "time"] }
+tui = "0.19.0"
+log = "0.4.17"
+simplelog = "0.12.1"
