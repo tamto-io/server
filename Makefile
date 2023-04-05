@@ -11,5 +11,8 @@ run-docker:
 build:
 	cargo build --release
 
+run : build
+	./target/release/server --listen "[::1]:42000"
+
 run-local: build
 	./scripts/run-nodes.sh -n 10 -p 42050
