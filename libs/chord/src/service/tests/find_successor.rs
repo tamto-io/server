@@ -39,6 +39,28 @@ async fn find_successor_with_2_nodes() {
 }
 
 #[tokio::test]
+async fn find_successor_with_2_nodes_but_the_same_id() {
+    let _m = get_lock(&MTX);
+    let ctx = MockClient::init_context();
+
+    ctx.expect().returning(|_| {
+        let mut client = MockClient::new();
+        client
+            .expect_find_successor()
+            .times(1)
+            .returning(|_| Ok(tests::node(6)));
+        client
+    });
+
+    let mut service: NodeService<MockClient> =
+        NodeService::with_id(6, SocketAddr::from(([127, 0, 0, 1], 42001)));
+    service.store.set_successor(tests::node(6));
+
+    assert_eq!(service.find_successor(6).await.unwrap().id, 6);
+    assert_eq!(service.find_successor(6).await.unwrap().id, 6);
+}
+
+#[tokio::test]
 async fn find_successor_using_finger_table_nodes() {
     let _m = get_lock(&MTX);
     let ctx = MockClient::init_context();

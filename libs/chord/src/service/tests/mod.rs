@@ -1,20 +1,20 @@
+use crate::client::MockClient;
+use crate::{Node, NodeService};
 use std::marker::PhantomData;
 use std::net::SocketAddr;
-use crate::{Node, NodeService};
-use crate::client::MockClient;
 
+mod check_predecessor;
 mod find_successor;
+mod fix_fingers;
 mod join;
 mod notify;
 mod stabilize;
-mod check_predecessor;
-mod fix_fingers;
 
-use lazy_static::lazy_static;
-use std::sync::{Mutex, MutexGuard};
-use mockall::predicate;
-use crate::node::Finger;
 use crate::node::store::NodeStore;
+use crate::node::Finger;
+use lazy_static::lazy_static;
+use mockall::predicate;
+use std::sync::{Mutex, MutexGuard};
 
 lazy_static! {
     static ref MTX: Mutex<()> = Mutex::new(());
@@ -45,7 +45,7 @@ impl Default for NodeService<MockClient> {
             id: node.id,
             addr: node.addr,
             store,
-            phantom: PhantomData
+            phantom: PhantomData,
         }
     }
 }
@@ -85,11 +85,14 @@ impl NodeService<MockClient> {
 
         let mut fingers = Vec::with_capacity(64);
 
-        for i in 1..size+1 {
+        for i in 1..size + 1 {
             let finger_id = Finger::sized_finger_id(size, self.id, (i) as u8);
 
             let closest = Self::find_closest_successor(finger_id, &nodes);
-            fingers.push(Finger { start: finger_id, node: closest });
+            fingers.push(Finger {
+                start: finger_id,
+                node: closest,
+            });
         }
 
         self.store.finger_table = fingers;
@@ -134,9 +137,7 @@ impl MockClient {
         self.expect_find_successor()
             .with(predicate::eq(id))
             .times(1)
-            .returning(move |_| {
-                Ok(node(return_node))
-            });
+            .returning(move |_| Ok(node(return_node)));
     }
 }
 
@@ -221,5 +222,4 @@ mod tests {
         let closest = NodeService::find_closest_successor(65, &nodes);
         assert_eq!(1, closest.id);
     }
-
 }

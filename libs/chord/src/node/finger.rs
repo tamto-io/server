@@ -1,12 +1,16 @@
 use crate::Node;
 
-#[derive(Debug)]
+/// Finger table entry
+#[derive(Debug, Clone)]
 pub struct Finger {
-    pub(crate) start: u64,
+    pub(crate) _start: u64,
     pub node: Node,
 }
 
 impl Finger {
+    /// Finger table size
+    pub const FINGER_TABLE_SIZE: u8 = 64;
+
     /// Generate a finger id for a given node id and finger index.
     /// The finger id is calculated using the following formula:
     /// ```text
@@ -21,7 +25,7 @@ impl Finger {
     /// * `node_id` - The id of the node
     /// * `index` - The index of the finger
     pub(crate) fn finger_id(node_id: u64, index: u8) -> u64 {
-        Self::sized_finger_id(64_u8, node_id, index)
+        Self::sized_finger_id(Self::FINGER_TABLE_SIZE, node_id, index)
     }
 
     pub(crate) fn sized_finger_id(size: u8, node_id: u64, index: u8) -> u64 {
@@ -54,9 +58,9 @@ impl Finger {
         // We start at 1 because the calculation of the finger id is based on the index
         // of the finger. The calculation assumes that the index starts at 1.
         for i in 1..(size + 1) {
-            let finger_id = Self::sized_finger_id(size, node.id, i);
+            let finger_id = Self::sized_finger_id(size, node.id.0, i);
             fingers.push(Finger {
-                start: finger_id,
+                _start: finger_id,
                 node: node.clone(),
             });
         }
@@ -67,6 +71,8 @@ impl Finger {
 
 #[cfg(test)]
 mod tests {
+    use crate::NodeId;
+
     use super::*;
     use std::net::SocketAddr;
 
@@ -107,29 +113,29 @@ mod tests {
 
     #[test]
     fn it_should_generate_finger_table() {
-        let node = Node::with_id(1, SocketAddr::from(([127, 0, 0, 1], 42001)));
+        let node = Node::with_id(NodeId(1), SocketAddr::from(([127, 0, 0, 1], 42001)));
 
         let fingers = Finger::init_finger_table(node.clone());
 
         assert_eq!(fingers.len(), 64);
-        assert_eq!(fingers[0].start, 2);
-        assert_eq!(fingers[1].start, 3);
-        assert_eq!(fingers[2].start, 5);
-        assert_eq!(fingers[3].start, 9);
-        assert_eq!(fingers[4].start, 17);
-        assert_eq!(fingers[5].start, 33);
-        assert_eq!(fingers[15].start, 32769);
-        assert_eq!(fingers[63].start, 9223372036854775809);
+        assert_eq!(fingers[0]._start, 2);
+        assert_eq!(fingers[1]._start, 3);
+        assert_eq!(fingers[2]._start, 5);
+        assert_eq!(fingers[3]._start, 9);
+        assert_eq!(fingers[4]._start, 17);
+        assert_eq!(fingers[5]._start, 33);
+        assert_eq!(fingers[15]._start, 32769);
+        assert_eq!(fingers[63]._start, 9223372036854775809);
 
-        let node = Node::with_id(5, SocketAddr::from(([127, 0, 0, 1], 42001)));
+        let node = Node::with_id(NodeId(5), SocketAddr::from(([127, 0, 0, 1], 42001)));
         let fingers = Finger::sized_finger_table(6, node);
 
         assert_eq!(fingers.len(), 6);
-        assert_eq!(fingers[0].start, 6);
-        assert_eq!(fingers[1].start, 7);
-        assert_eq!(fingers[2].start, 9);
-        assert_eq!(fingers[3].start, 13);
-        assert_eq!(fingers[4].start, 21);
-        assert_eq!(fingers[5].start, 37);
+        assert_eq!(fingers[0]._start, 6);
+        assert_eq!(fingers[1]._start, 7);
+        assert_eq!(fingers[2]._start, 9);
+        assert_eq!(fingers[3]._start, 13);
+        assert_eq!(fingers[4]._start, 21);
+        assert_eq!(fingers[5]._start, 37);
     }
 }
