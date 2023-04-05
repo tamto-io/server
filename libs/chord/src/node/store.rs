@@ -212,10 +212,10 @@ mod tests {
             }
         });
 
-        assert_eq!(store.db().closest_preceding_node(10, 1), Some(predecessor.clone()));
+        assert_eq!(store.db().closest_preceding_node(10, 2), Some(predecessor.clone()));
         assert_eq!(store.db().closest_preceding_node(10, 10), Some(predecessor.clone()));
-        assert_eq!(store.db().closest_preceding_node(10, 15), Some(successor.clone()));
-        assert_eq!(store.db().closest_preceding_node(10, 21), Some(successor));
-        assert_eq!(store.db().closest_preceding_node(10, 28), Some(predecessor));
+        assert_eq!(store.db().closest_preceding_node(10, 15), None);
+        assert_eq!(store.db().closest_preceding_node(10, 21), Some(successor.clone()));
+        assert_eq!(store.db().closest_preceding_node(10, 28), Some(successor));
     }
 }

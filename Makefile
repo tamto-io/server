@@ -7,3 +7,9 @@ build-docker: build-docker-node
 
 run-docker:
 	docker compose up -d
+
+build:
+	cargo build --release
+
+run-local: build
+	./scripts/run-nodes.sh -n 10 -p 42050
