@@ -152,6 +152,5 @@ mod tests {
 
         assert_eq!(Node::is_between_on_ring_exclusive(1, 1, 5), false);
         assert_eq!(Node::is_between_on_ring_exclusive(1, 2, 5), false);
-
     }
 }

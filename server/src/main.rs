@@ -1,10 +1,10 @@
 use log::LevelFilter;
-use simplelog::{CombinedLogger, TermLogger, Config, TerminalMode, ColorChoice};
+use simplelog::{ColorChoice, CombinedLogger, Config, TermLogger, TerminalMode};
 use tamto_grpc::server::{ChordNodeServer, ChordService, Server};
 
 mod cli;
-use cli::Cli;
 use clap::Parser;
+use cli::Cli;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -24,11 +24,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn setup_logging() {
-    CombinedLogger::init(
-        vec![
-            TermLogger::new(LevelFilter::Debug, Config::default(), TerminalMode::Mixed, ColorChoice::Auto),
-        ]
-    ).unwrap();
+    CombinedLogger::init(vec![TermLogger::new(
+        LevelFilter::Debug,
+        Config::default(),
+        TerminalMode::Mixed,
+        ColorChoice::Auto,
+    )])
+    .unwrap();
 
     log::info!("Logging started");
 }

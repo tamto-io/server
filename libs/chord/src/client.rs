@@ -38,9 +38,9 @@ pub trait Client {
     async fn notify(&self, predecessor: Node) -> Result<(), ClientError>;
 
     /// Get the finger table of the node
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// A vector of nodes
     async fn get_finger_table(&self) -> Result<Vec<Node>, ClientError>;
 

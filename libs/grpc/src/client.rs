@@ -1,12 +1,14 @@
-use std::net::{SocketAddr, IpAddr, Ipv4Addr, Ipv6Addr};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::sync::{Arc, Mutex};
 
 use crate::server::chord_proto::chord_node_client::ChordNodeClient;
-use crate::server::chord_proto::{FindSuccessorRequest, self, NotifyRequest, GetPredecessorRequest, GetFingerTableRequest};
+use crate::server::chord_proto::{
+    self, FindSuccessorRequest, GetFingerTableRequest, GetPredecessorRequest, NotifyRequest,
+};
 use chord_rs::client::{ClientError, ClientStatus};
 use chord_rs::{Client, Node, NodeId};
 use tonic::async_trait;
-use tonic::transport::{Endpoint, Channel};
+use tonic::transport::{Channel, Endpoint};
 
 #[derive(Debug)]
 pub struct ChordGrpcClient {
@@ -16,13 +18,13 @@ pub struct ChordGrpcClient {
 
 #[derive(Debug, Clone)]
 pub(crate) struct ClientGuard {
-    client: Arc<Mutex<Option<ChordNodeClient<Channel>>>>
+    client: Arc<Mutex<Option<ChordNodeClient<Channel>>>>,
 }
 
 impl ClientGuard {
     fn new() -> Self {
         Self {
-            client: Arc::new(Mutex::new(None))
+            client: Arc::new(Mutex::new(None)),
         }
     }
 }
@@ -40,10 +42,16 @@ impl Client for ChordGrpcClient {
             log::error!("Failed to initialize client: {:?}", err);
         } else {
             log::debug!("Client initialized");
-            client_guard_clone.client.lock().unwrap().replace(client.unwrap());
+            client_guard_clone
+                .client
+                .lock()
+                .unwrap()
+                .replace(client.unwrap());
         }
 
-        ChordGrpcClient { client: client_guard }
+        ChordGrpcClient {
+            client: client_guard,
+        }
     }
 
     fn status(&self) -> ClientStatus {
@@ -93,7 +101,9 @@ impl Client for ChordGrpcClient {
     async fn notify(&self, predecessor: Node) -> Result<(), ClientError> {
         let mut client = self.client()?;
 
-        let request = tonic::Request::new(NotifyRequest { node: Some(predecessor.into()) });
+        let request = tonic::Request::new(NotifyRequest {
+            node: Some(predecessor.into()),
+        });
         client.notify(request).await.unwrap();
 
         Ok(())
@@ -107,7 +117,9 @@ impl Client for ChordGrpcClient {
 
         let response = response.into_inner();
 
-        let nodes = response.nodes.into_iter()
+        let nodes = response
+            .nodes
+            .into_iter()
             .map(|node| node.try_into().unwrap())
             .collect();
 
@@ -139,13 +151,15 @@ impl ChordGrpcClient {
 }
 
 #[derive(Debug)]
-pub struct IpParseError{
+pub struct IpParseError {
     msg: String,
 }
 
 impl IpParseError {
     fn new(msg: &str) -> Self {
-        IpParseError { msg: msg.to_string() }
+        IpParseError {
+            msg: msg.to_string(),
+        }
     }
 }
 
@@ -159,17 +173,16 @@ impl TryFrom<chord_proto::IpAddress> for IpAddr {
     type Error = IpParseError;
 
     fn try_from(ip: chord_proto::IpAddress) -> Result<Self, Self::Error> {
-        
         fn ipv4(addr: Vec<u8>) -> [u8; 4] {
             let mut array = [0; 4];
             array.copy_from_slice(&addr);
-            return array
+            return array;
         }
 
         fn ipv6(addr: Vec<u8>) -> [u8; 16] {
             let mut array = [0; 16];
             array.copy_from_slice(&addr);
-            return array
+            return array;
         }
 
         if ip.is_v4() && ip.address.len() != 4 {
@@ -212,7 +225,10 @@ mod tests {
         let valid_ip = addr(vec![127, 0, 0, 1]);
         let invalid_ip = IpAddr::try_from(addr(vec![127, 0, 0, 1, 2]));
 
-        assert_eq!(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), IpAddr::try_from(valid_ip).unwrap());
+        assert_eq!(
+            IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+            IpAddr::try_from(valid_ip).unwrap()
+        );
         assert!(invalid_ip.is_err());
         assert_eq!("Invalid IPv4 address", invalid_ip.err().unwrap().msg);
 

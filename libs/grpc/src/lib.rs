@@ -5,7 +5,6 @@ use server::chord_proto;
 pub mod client;
 pub mod server;
 
-
 impl TryFrom<chord_proto::Node> for chord_rs::Node {
     type Error = std::net::AddrParseError;
 
@@ -20,7 +19,6 @@ impl TryFrom<chord_proto::Node> for chord_rs::Node {
         Ok(chord_rs::Node::with_id(id.into(), addr))
     }
 }
-
 
 pub fn add(left: usize, right: usize) -> usize {
     left + right

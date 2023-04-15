@@ -1,4 +1,4 @@
-use std::sync::{Mutex, Arc};
+use std::sync::{Arc, Mutex};
 
 use crate::node::Finger;
 use crate::Node;
@@ -33,7 +33,9 @@ impl NodeStore {
     ///
     /// * `successor` - The immediate successor of the current node
     pub(crate) fn new(successor: Node) -> Self {
-        Self { db: Db::new(successor) }
+        Self {
+            db: Db::new(successor),
+        }
     }
 
     /// Get the shared database. Internally, this is an
@@ -58,7 +60,6 @@ impl Db {
 
         Db { shared }
     }
-
 
     /// Set the predecessor of the node
     ///
@@ -107,14 +108,14 @@ impl Db {
 
     /// Get the closest preceding node
     /// This is used to find a node that is possibly responsible for a key
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `node_id` - The id of the current node
     /// * `id` - The id of the key we are looking for
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// The closest preceding node for the key
     pub(crate) fn closest_preceding_node(&self, node_id: u64, id: u64) -> Option<Node> {
         let state = self.shared_state();
@@ -204,18 +205,32 @@ mod tests {
         let predecessor = Node::with_id(NodeId(1), SocketAddr::from(([127, 0, 0, 1], 42003)));
         store.db().set_predecessor(predecessor.clone());
 
-        store.db().finger_table().iter().enumerate().for_each(|(i, finger)| {
-            if finger._start < 20 {
-                store.db().update_finger(i, successor.clone());
-            } else {
-                store.db().update_finger(i, predecessor.clone());
-            }
-        });
+        store
+            .db()
+            .finger_table()
+            .iter()
+            .enumerate()
+            .for_each(|(i, finger)| {
+                if finger._start < 20 {
+                    store.db().update_finger(i, successor.clone());
+                } else {
+                    store.db().update_finger(i, predecessor.clone());
+                }
+            });
 
-        assert_eq!(store.db().closest_preceding_node(10, 2), Some(predecessor.clone()));
-        assert_eq!(store.db().closest_preceding_node(10, 10), Some(predecessor.clone()));
+        assert_eq!(
+            store.db().closest_preceding_node(10, 2),
+            Some(predecessor.clone())
+        );
+        assert_eq!(
+            store.db().closest_preceding_node(10, 10),
+            Some(predecessor.clone())
+        );
         assert_eq!(store.db().closest_preceding_node(10, 15), None);
-        assert_eq!(store.db().closest_preceding_node(10, 21), Some(successor.clone()));
+        assert_eq!(
+            store.db().closest_preceding_node(10, 21),
+            Some(successor.clone())
+        );
         assert_eq!(store.db().closest_preceding_node(10, 28), Some(successor));
     }
 }

@@ -1,14 +1,13 @@
 use std::net::SocketAddr;
 
-use clap::{command, Parser, arg, ValueEnum, Subcommand, Args};
+use clap::{arg, command, Args, Parser, Subcommand, ValueEnum};
 use tamto_grpc::client::ChordGrpcClient;
 
-use crate::commands::{CommandExecute, Error, lookup::Lookup, CommandResult};
+use crate::commands::{lookup::Lookup, CommandExecute, CommandResult, Error};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 pub(crate) struct Cli {
-
     /// Address of a node in the ring to connect to, format: IP[:PORT], e.g. [::1]:42000
     #[arg(long, value_name = "ADDRESS:PORT")]
     pub(crate) ring: SocketAddr,
@@ -16,8 +15,6 @@ pub(crate) struct Cli {
     /// Set the log level
     #[arg(short('L'), long, value_name = "LEVEL", value_enum, default_value_t = LogLevel::Warn)]
     pub(crate) log_level: LogLevel,
-
-    
 
     /// Subcommand
     #[command(subcommand)]
@@ -52,7 +49,6 @@ pub(crate) struct LookupArgs {
     #[arg(long, default_value_t = false)]
     pub(crate) raw: bool,
 }
-
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub(crate) enum LogLevel {

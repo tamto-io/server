@@ -1,6 +1,6 @@
 use chord_rs::Client;
 use clap::Parser;
-use commands::{Error, CommandResult};
+use commands::{CommandResult, Error};
 use tamto_grpc::client::ChordGrpcClient;
 
 use crate::{cli::Cli, commands::CommandExecute};
@@ -23,7 +23,6 @@ async fn run(cli: Cli) -> Result<CommandResult, Error> {
 
     CommandExecute::execute(&cli.command, client).await
 }
-
 
 fn print_result(result: CommandResult) {
     println!("{}", result.result);

@@ -1,11 +1,10 @@
 use std::net::SocketAddr;
 
-use clap::{command, Parser, arg, ValueEnum};
+use clap::{arg, command, Parser, ValueEnum};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 pub(crate) struct Cli {
-
     /// Sets a socket address to listen on
     #[arg(short, long, value_name = "[ADDRESS[:PORT]]", default_value_t = SocketAddr::from(([127, 0, 0, 1], 42000)))]
     pub(crate) listen: SocketAddr,

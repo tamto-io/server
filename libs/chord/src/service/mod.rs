@@ -1,5 +1,5 @@
 use crate::client::ClientError;
-use crate::node::store::{NodeStore, Db};
+use crate::node::store::{Db, NodeStore};
 use crate::node::Finger;
 use crate::{Client, Node, NodeId};
 use std::marker::PhantomData;
@@ -122,10 +122,12 @@ impl<C: Client + Clone> NodeService<C> {
         let successor = self.store().successor();
         let client: C = successor.client().await;
         // let client: C = self.store().successor().client();
-        client.notify(Node {
-            id: self.id,
-            addr: self.addr,
-        }).await?;
+        client
+            .notify(Node {
+                id: self.id,
+                addr: self.addr,
+            })
+            .await?;
 
         Ok(())
     }
@@ -169,23 +171,23 @@ impl<C: Client + Clone> NodeService<C> {
     }
 
     /// Get finger table
-    /// 
+    ///
     /// This method is used to get the finger table of the node.
     pub fn finger_table(&self) -> Vec<Finger> {
         self.store().finger_table()
     }
 
     /// Get closest preceding node
-    /// 
+    ///
     /// This method is used to get the closest preceding node of the given id.
     /// It will iterate over the finger table and return the closest node to the given id.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `id` - The id to find the closest preceding node for
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// The closest preceding node
     fn closest_preceding_node(&self, id: NodeId) -> Node {
         self.store()

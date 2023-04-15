@@ -1,17 +1,22 @@
 use std::{
-    net::{IpAddr, SocketAddr}, sync::Arc, time::Duration,
+    net::{IpAddr, SocketAddr},
+    sync::Arc,
+    time::Duration,
 };
 
 use chord_proto::chord_node_server::ChordNode;
 pub use chord_proto::chord_node_server::ChordNodeServer;
 use chord_proto::{PingRequest, PingResponse};
-use chord_rs::{NodeService, Node};
+use chord_rs::{Node, NodeService};
 pub use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
 use crate::client::ChordGrpcClient;
 
-use self::chord_proto::{FindSuccessorRequest, FindSuccessorResponse, GetPredecessorRequest, GetPredecessorResponse, NotifyRequest, NotifyResponse, GetFingerTableRequest, GetFingerTableResponse};
+use self::chord_proto::{
+    FindSuccessorRequest, FindSuccessorResponse, GetFingerTableRequest, GetFingerTableResponse,
+    GetPredecessorRequest, GetPredecessorResponse, NotifyRequest, NotifyResponse,
+};
 
 pub mod chord_proto {
     use crate::client::ChordGrpcClient;
@@ -28,7 +33,6 @@ pub mod chord_proto {
 
     unsafe impl Sync for ChordGrpcClient {}
     unsafe impl Send for ChordGrpcClient {}
-
 }
 
 #[derive(Debug, Clone)]
@@ -98,10 +102,7 @@ impl ChordService {
             }
         });
 
-
-        Self {
-            node: node_service,
-        }
+        Self { node: node_service }
     }
 
     fn map_error(error: chord_rs::error::ServiceError) -> Status {
@@ -127,7 +128,6 @@ impl From<chord_rs::error::ServiceError> for JoinRingError {
 #[tonic::async_trait]
 impl ChordNode for ChordService {
     async fn ping(&self, _request: Request<PingRequest>) -> Result<Response<PingResponse>, Status> {
-
         let reply = chord_proto::PingResponse {};
 
         Ok(Response::new(reply))
@@ -137,7 +137,6 @@ impl ChordNode for ChordService {
         &self,
         request: Request<FindSuccessorRequest>,
     ) -> Result<Response<FindSuccessorResponse>, Status> {
-
         let result = self
             .node
             .find_successor(request.get_ref().id.into())
@@ -147,31 +146,33 @@ impl ChordNode for ChordService {
         Ok(Response::new(result.into()))
     }
 
-    async fn get_predecessor(&self, _request: Request<GetPredecessorRequest>) -> Result<Response<GetPredecessorResponse>, Status> {
-
-        let result = self
-            .node
-            .get_predecessor()
-            .await
-            .map_err(Self::map_error)?;
+    async fn get_predecessor(
+        &self,
+        _request: Request<GetPredecessorRequest>,
+    ) -> Result<Response<GetPredecessorResponse>, Status> {
+        let result = self.node.get_predecessor().await.map_err(Self::map_error)?;
 
         // println!("result: {:?}", result);
 
         Ok(Response::new(result.into()))
     }
 
-    async fn notify(&self, request: Request<NotifyRequest>) -> Result<Response<NotifyResponse>, Status> {
+    async fn notify(
+        &self,
+        request: Request<NotifyRequest>,
+    ) -> Result<Response<NotifyResponse>, Status> {
         let node = request.get_ref().node.clone();
         let node = Node::try_from(node.unwrap()).unwrap();
 
-        self
-            .node
-            .notify(node);
+        self.node.notify(node);
 
         Ok(Response::new(NotifyResponse {}))
     }
 
-    async fn get_finger_table(&self, _: Request<GetFingerTableRequest>) -> Result<Response<GetFingerTableResponse>, Status> {
+    async fn get_finger_table(
+        &self,
+        _: Request<GetFingerTableRequest>,
+    ) -> Result<Response<GetFingerTableResponse>, Status> {
         let finger_table = self.node.finger_table();
 
         let nodes = finger_table
@@ -179,9 +180,7 @@ impl ChordNode for ChordService {
             .map(|finger| finger.node.clone().into())
             .collect();
 
-        Ok(Response::new(GetFingerTableResponse {
-            nodes,
-        }))
+        Ok(Response::new(GetFingerTableResponse { nodes }))
     }
 }
 

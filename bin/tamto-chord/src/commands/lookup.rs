@@ -1,14 +1,14 @@
 use std::num::ParseIntError;
 
-use chord_rs::{NodeId, Client};
+use chord_rs::{Client, NodeId};
 use tamto_grpc::client::ChordGrpcClient;
 
 use crate::cli::LookupArgs;
 
-use super::{CommandExecute, Error, CommandResult};
+use super::{CommandExecute, CommandResult, Error};
 
 pub(crate) struct Lookup {
-    key: NodeId
+    key: NodeId,
 }
 
 #[async_trait::async_trait]
@@ -19,7 +19,12 @@ impl CommandExecute for Lookup {
 
         let elapsed = start.elapsed();
         let result = CommandResult {
-            result: format!("Id: {}\nNode:\n  Address: {}\n  Id: {}", self.key, node.addr(), node.id()),
+            result: format!(
+                "Id: {}\nNode:\n  Address: {}\n  Id: {}",
+                self.key,
+                node.addr(),
+                node.id()
+            ),
             execution: elapsed,
         };
 
