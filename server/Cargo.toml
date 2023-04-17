@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 clap = { version = "4.1.13", features = ["derive"]}
 tamto-grpc = { version = "0.1.0", path = "../libs/grpc" }
+tamto-capnp = { version = "0.1.0", path = "../libs/capnp" }
 tokio = { version = "1.26.0", features = ["rt-multi-thread"] }
 log = "0.4.17"
 simplelog = "0.12.1"

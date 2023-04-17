@@ -2,6 +2,7 @@ use chord_rs::Client;
 use clap::Parser;
 use commands::{CommandResult, Error};
 use tamto_grpc::client::ChordGrpcClient;
+use tamto_capnp::client::ChordCapnpClient;
 
 use crate::{cli::Cli, commands::CommandExecute};
 
@@ -19,7 +20,8 @@ async fn main() {
 }
 
 async fn run(cli: Cli) -> Result<CommandResult, Error> {
-    let client = ChordGrpcClient::init(cli.ring).await;
+    // let client = ChordGrpcClient::init(cli.ring).await;
+    let client = ChordCapnpClient::init(cli.ring).await;
 
     CommandExecute::execute(&cli.command, client).await
 }

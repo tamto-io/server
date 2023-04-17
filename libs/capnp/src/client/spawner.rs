@@ -1,0 +1,75 @@
+use std::net::SocketAddr;
+
+use capnp_rpc::{RpcSystem, rpc_twoparty_capnp, twoparty};
+use futures::AsyncReadExt;
+use tokio::{sync::mpsc, runtime::Builder, task::LocalSet};
+
+use crate::chord_capnp;
+
+#[derive(Clone)]
+pub(crate) struct LocalSpawner {
+   sender: mpsc::UnboundedSender<super::Command>,
+}
+
+impl LocalSpawner {
+   pub fn new(addr: SocketAddr) -> Self {
+        let (sender, mut receiver) = mpsc::unbounded_channel();
+        let rt = Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+
+        std::thread::spawn(move || {
+            let local = LocalSet::new();
+
+            local.spawn_local(async move {
+                while let Some(command) = receiver.recv().await {
+                    Self::run_local(addr, command).await;
+                }
+            });
+
+            rt.block_on(local);
+        });
+        
+        Self { sender }
+   }
+
+    pub(crate) fn spawn(&self, task: super::Command) {
+        self.sender.send(task).expect("Thread with LocalSet has shut down.");
+    }
+
+    async fn rpc_system(addr: SocketAddr) -> RpcSystem<rpc_twoparty_capnp::Side> {
+        let stream = tokio::net::TcpStream::connect(&addr).await.unwrap();
+        stream.set_nodelay(true).unwrap();
+        let (reader, writer) =
+            tokio_util::compat::TokioAsyncReadCompatExt::compat(stream).split();
+        let rpc_network = Box::new(twoparty::VatNetwork::new(
+            reader,
+            writer,
+            rpc_twoparty_capnp::Side::Client,
+            Default::default(),
+        ));
+
+        return RpcSystem::new(rpc_network, None);
+    }
+
+    async fn run_local(addr: SocketAddr, command: super::Command) {
+        let mut rpc_system = Self::rpc_system(addr).await;
+        let client: chord_capnp::chord_node::Client =
+                    rpc_system.bootstrap(rpc_twoparty_capnp::Side::Server);
+        tokio::task::spawn_local(rpc_system);
+
+        match command {
+            super::Command::Ping(resp) => super::Command::ping(client, resp).await,
+            super::command::Command::FindSuccessor(node_id, resp) => {
+                super::Command::find_successor(client, node_id, resp).await
+            }
+            // super::Command::Ping(resp) => {
+            //     let request = client.ping_request();
+            //     let _reply = request.send().promise.await.unwrap();
+            //     resp.send(Ok(())).unwrap();
+            // }
+            _ => {}
+        }
+    }
+}

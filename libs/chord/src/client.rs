@@ -15,7 +15,7 @@ pub trait Client {
     async fn init(addr: SocketAddr) -> Self;
 
     /// Get the status of the client
-    fn status(&self) -> ClientStatus;
+    // fn status(&self) -> ClientStatus;
 
     /// Find a successor of a given id.
     ///
