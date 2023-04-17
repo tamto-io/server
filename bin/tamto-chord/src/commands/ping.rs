@@ -1,25 +1,25 @@
 use std::num::ParseIntError;
 
-use chord_rs::{Client};
+use chord_rs::Client;
 
 use crate::cli::PingArgs;
 
 use super::{CommandExecute, CommandResult, Error};
 
-pub(crate) struct Ping {
-}
+pub(crate) struct Ping {}
 
 #[async_trait::async_trait]
 impl CommandExecute for Ping {
-    async fn execute<C>(&self, client: C) -> Result<CommandResult, Error> where C: Client + Clone + Send + Sync {
+    async fn execute<C>(&self, client: C) -> Result<CommandResult, Error>
+    where
+        C: Client + Clone + Send + Sync,
+    {
         let start = std::time::Instant::now();
         client.ping().await?;
 
         let elapsed = start.elapsed();
         let result = CommandResult {
-            result: format!(
-                "Pong",
-            ),
+            result: format!("Pong",),
             execution: elapsed,
         };
 

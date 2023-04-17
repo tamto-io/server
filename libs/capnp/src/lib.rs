@@ -1,4 +1,7 @@
-use std::{net::{SocketAddr, IpAddr}, sync::Arc};
+use std::{
+    net::{IpAddr, SocketAddr},
+    sync::Arc,
+};
 
 use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
 use chord_rs::NodeService;
@@ -10,14 +13,13 @@ pub mod parser;
 mod server;
 
 pub mod chord_capnp {
-    use std::net::{SocketAddr, Ipv4Addr, SocketAddrV4, Ipv6Addr, SocketAddrV6, IpAddr};
+    use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
 
-    use chord_rs::{Node, client::ClientError};
+    use chord_rs::{client::ClientError, Node};
 
     use self::chord_node::node::ip_address;
 
     include!(concat!(env!("OUT_DIR"), "/capnp/chord_capnp.rs"));
-
 }
 
 pub struct Server {
@@ -29,7 +31,10 @@ impl Server {
     pub async fn new(addr: SocketAddr, ring: Option<SocketAddr>) -> Self {
         let node_service = Arc::new(NodeService::new(addr));
 
-        Self { addr, node: node_service }
+        Self {
+            addr,
+            node: node_service,
+        }
     }
 
     pub async fn run(&self) {
@@ -37,7 +42,8 @@ impl Server {
             .run_until(async move {
                 let server = server::NodeServerImpl::new(self.node.clone());
                 let listener = tokio::net::TcpListener::bind(&self.addr).await.unwrap();
-                let chord_node_client: chord_capnp::chord_node::Client = capnp_rpc::new_client(server);
+                let chord_node_client: chord_capnp::chord_node::Client =
+                    capnp_rpc::new_client(server);
 
                 loop {
                     let (stream, _) = listener.accept().await.unwrap();
@@ -57,6 +63,6 @@ impl Server {
                     tokio::task::spawn_local(rpc_system);
                 }
             })
-        .await
+            .await
     }
 }

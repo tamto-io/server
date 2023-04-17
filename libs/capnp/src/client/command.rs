@@ -1,4 +1,4 @@
-use chord_rs::{NodeId, Node, client::ClientError};
+use chord_rs::{client::ClientError, Node, NodeId};
 
 use crate::{chord_capnp, parser::ParserError};
 
@@ -31,10 +31,15 @@ impl Command {
         request.get().set_id(id.into());
 
         let reply = request.send().promise.await.unwrap(); // TODO: Handle error
-        let node = reply.get().unwrap().get_node().unwrap().try_into().map_err(|err: ParserError| err.into());
+        let node = reply
+            .get()
+            .unwrap()
+            .get_node()
+            .unwrap()
+            .try_into()
+            .map_err(|err: ParserError| err.into());
 
         sender.send(node).unwrap();
-
     }
 }
 

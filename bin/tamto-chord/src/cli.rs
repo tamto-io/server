@@ -3,7 +3,7 @@ use std::net::SocketAddr;
 use chord_rs::Client;
 use clap::{arg, command, Args, Parser, Subcommand, ValueEnum};
 
-use crate::commands::{lookup::Lookup, CommandExecute, CommandResult, Error, ping::Ping};
+use crate::commands::{lookup::Lookup, ping::Ping, CommandExecute, CommandResult, Error};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -32,12 +32,15 @@ pub(crate) enum Commands {
 
 #[async_trait::async_trait]
 impl CommandExecute for Commands {
-    async fn execute<C>(&self, client: C) -> Result<CommandResult, Error> where C: Client + Clone + Send + Sync {
+    async fn execute<C>(&self, client: C) -> Result<CommandResult, Error>
+    where
+        C: Client + Clone + Send + Sync,
+    {
         match self {
             Commands::Lookup(args) => {
                 let lookup: Lookup = Lookup::try_from(args)?;
                 lookup.execute(client).await
-            },
+            }
             Commands::Ping(args) => {
                 let ping: Ping = Ping::try_from(args)?;
                 ping.execute(client).await

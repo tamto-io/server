@@ -1,4 +1,4 @@
-use std::net::{SocketAddr, IpAddr, Ipv4Addr, Ipv6Addr};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 
 use capnp::message;
 use chord_rs::Node;
@@ -17,7 +17,7 @@ impl TryFrom<node::Reader<'_>> for Node {
     fn try_from(value: node::Reader<'_>) -> Result<Self, Self::Error> {
         let id = value.get_id();
         let addr: SocketAddr = value.get_address().unwrap().into();
-        
+
         Ok(Node::with_id(id.into(), addr))
     }
 }
@@ -39,7 +39,7 @@ impl From<ip_address::Reader<'_>> for SocketAddr {
                 let mut array = [0; 8];
                 array.copy_from_slice(&ip.as_slice().unwrap());
                 let ip = IpAddr::V6(Ipv6Addr::from(array));
-                
+
                 SocketAddr::new(ip, port)
             }
         };
@@ -75,20 +75,20 @@ impl ResultBuilder<SocketAddr> for chord_capnp::chord_node::node::ip_address::Bu
     }
 }
 
-impl <'a> ResultBuilder<IpAddr> for chord_capnp::chord_node::node::ip_address::Builder<'a> {
+impl<'a> ResultBuilder<IpAddr> for chord_capnp::chord_node::node::ip_address::Builder<'a> {
     type Output = ();
 
     #[inline]
     fn insert(self, value: IpAddr) -> Result<Self::Output, capnp::Error> {
         match value {
-            IpAddr::V4(v4) => { //builder.insert(v4)?;
+            IpAddr::V4(v4) => {
+                //builder.insert(v4)?;
                 let octets: Vec<u8> = v4.octets().to_vec();
                 let mut ip = self.init_ipv4(4);
                 for i in 0..4 {
                     ip.set(i, octets[i as usize]);
                 }
-
-            },
+            }
             IpAddr::V6(v6) => {
                 let segments: Vec<u16> = v6.segments().to_vec();
                 let mut ip = self.init_ipv6(8);
@@ -113,7 +113,8 @@ mod tests {
         let builder = message.init_root::<chord_capnp::chord_node::node::ip_address::Builder<'_>>();
         builder.insert(addr).unwrap();
 
-        let reader: chord_capnp::chord_node::node::ip_address::Reader = message.get_root_as_reader().unwrap();
+        let reader: chord_capnp::chord_node::node::ip_address::Reader =
+            message.get_root_as_reader().unwrap();
         assert_eq!(reader.get_port(), 8080);
         assert_eq!(reader.has_ipv6(), false);
         assert_eq!(reader.has_ipv4(), true);
@@ -126,7 +127,8 @@ mod tests {
         let builder = message.init_root::<chord_capnp::chord_node::node::ip_address::Builder<'_>>();
         builder.insert(addr).unwrap();
 
-        let reader: chord_capnp::chord_node::node::ip_address::Reader = message.get_root_as_reader().unwrap();
+        let reader: chord_capnp::chord_node::node::ip_address::Reader =
+            message.get_root_as_reader().unwrap();
         assert_eq!(reader.get_port(), 8080);
         assert_eq!(reader.has_ipv6(), true);
         assert_eq!(reader.has_ipv4(), false);

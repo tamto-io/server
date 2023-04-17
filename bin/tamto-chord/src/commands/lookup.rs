@@ -13,7 +13,10 @@ pub(crate) struct Lookup {
 
 #[async_trait::async_trait]
 impl CommandExecute for Lookup {
-    async fn execute<C>(&self, client: C) -> Result<CommandResult, Error> where C: Client + Clone + Send + Sync {
+    async fn execute<C>(&self, client: C) -> Result<CommandResult, Error>
+    where
+        C: Client + Clone + Send + Sync,
+    {
         let start = std::time::Instant::now();
         let node = client.find_successor(self.key.into()).await?;
 

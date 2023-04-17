@@ -1,12 +1,12 @@
 use std::net::SocketAddr;
 
-use chord_rs::{Client, client::ClientError, NodeId, Node};
+use chord_rs::{client::ClientError, Client, Node, NodeId};
 use tokio::sync::oneshot;
 
-use self::{spawner::LocalSpawner, command::Command};
+use self::{command::Command, spawner::LocalSpawner};
 
-mod spawner;
 mod command;
+mod spawner;
 
 type CmdResult<T> = oneshot::Sender<Result<T, ClientError>>;
 
@@ -19,7 +19,7 @@ pub struct ChordCapnpClient {
 impl Client for ChordCapnpClient {
     async fn init(addr: SocketAddr) -> Self {
         let spawner = LocalSpawner::new(addr);
-        
+
         Self { spawner }
     }
 

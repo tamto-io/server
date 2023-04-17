@@ -7,7 +7,9 @@ pub(crate) mod ping;
 
 #[async_trait::async_trait]
 pub trait CommandExecute {
-    async fn execute<C>(&self, client: C) -> Result<CommandResult, Error> where C: Client + Clone + Send + Sync;
+    async fn execute<C>(&self, client: C) -> Result<CommandResult, Error>
+    where
+        C: Client + Clone + Send + Sync;
 }
 
 #[derive(Debug)]

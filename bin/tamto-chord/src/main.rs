@@ -1,8 +1,8 @@
 use chord_rs::Client;
 use clap::Parser;
 use commands::{CommandResult, Error};
-use tamto_grpc::client::ChordGrpcClient;
 use tamto_capnp::client::ChordCapnpClient;
+use tamto_grpc::client::ChordGrpcClient;
 
 use crate::{cli::Cli, commands::CommandExecute};
 
