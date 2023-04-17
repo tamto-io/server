@@ -1,6 +1,6 @@
-use chord_rs::{NodeId, Node};
+use chord_rs::{NodeId, Node, client::ClientError};
 
-use crate::chord_capnp;
+use crate::{chord_capnp, parser::ParserError};
 
 use super::CmdResult;
 
@@ -31,9 +31,15 @@ impl Command {
         request.get().set_id(id.into());
 
         let reply = request.send().promise.await.unwrap(); // TODO: Handle error
-        let node = reply.get().unwrap().get_node().unwrap().try_into();
+        let node = reply.get().unwrap().get_node().unwrap().try_into().map_err(|err: ParserError| err.into());
 
         sender.send(node).unwrap();
 
+    }
+}
+
+impl From<ParserError> for ClientError {
+    fn from(err: ParserError) -> Self {
+        Self::Unexpected(format!("{}", err))
     }
 }

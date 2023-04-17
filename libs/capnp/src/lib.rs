@@ -1,11 +1,12 @@
-use std::{net::SocketAddr, sync::Arc};
+use std::{net::{SocketAddr, IpAddr}, sync::Arc};
 
 use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
 use chord_rs::NodeService;
 use client::ChordCapnpClient;
-use futures::AsyncReadExt;
+use futures::{AsyncReadExt, TryFutureExt};
 
 pub mod client;
+pub mod parser;
 
 pub mod chord_capnp {
     use std::net::{SocketAddr, Ipv4Addr, SocketAddrV4, Ipv6Addr, SocketAddrV6, IpAddr};
@@ -16,55 +17,52 @@ pub mod chord_capnp {
 
     include!(concat!(env!("OUT_DIR"), "/capnp/chord_capnp.rs"));
 
-    impl TryFrom<chord_node::node::Reader<'_>> for Node {
-        // fn from(node: chord_node::node::Reader<'_>) -> Self {
-    
-        //     Self {
-        //         id: node.get_id().into(),
-        //         addr: node.get_address().unwrap().into(),
-        //     }
-        // }
-
-        type Error = ClientError;
-
-        fn try_from(value: chord_node::node::Reader<'_>) -> Result<Self, Self::Error> {
-            todo!()
-        }
-    }
-
-    impl From<ip_address::Reader<'_>> for SocketAddr {
-        
-        fn from(addr: ip_address::Reader<'_>) -> Self {
-            let port = addr.get_port();
-            let address = match addr.which().unwrap() {
-                ip_address::Which::Ipv4(ipv4) => {
-                    let ip = ipv4.unwrap();
-                    let mut array = [0; 4];
-                    array.copy_from_slice(&ip.as_slice().unwrap());
-                    let ip = IpAddr::V4(Ipv4Addr::from(array));
-                    SocketAddr::new(ip, port)
-                }
-                ip_address::Which::Ipv6(ipv6) => {
-                    let ip = ipv6.unwrap();
-                    let mut array = [0; 8];
-                    array.copy_from_slice(&ip.as_slice().unwrap());
-                    let ip = IpAddr::V6(Ipv6Addr::from(array));
-                    
-                    SocketAddr::new(ip, port)
-                }
-            };
-
-            address
-        }
-    }
 }
 
-struct NodeServerImpl;
+struct NodeServerImpl {
+    node: Arc<NodeService<ChordCapnpClient>>,
+}
 
 impl chord_capnp::chord_node::Server for NodeServerImpl {
     fn ping(&mut self, _params: chord_capnp::chord_node::PingParams, mut _results: chord_capnp::chord_node::PingResults) -> ::capnp::capability::Promise<(), ::capnp::Error> {
         log::info!("Ping received");
         ::capnp::capability::Promise::ok(())
+    }
+
+    fn find_successor(&mut self, params: chord_capnp::chord_node::FindSuccessorParams<>, mut results: chord_capnp::chord_node::FindSuccessorResults<>) ->  capnp::capability::Promise<(), capnp::Error> {
+        log::info!("FindSuccessor received");
+
+        let service = self.node.clone();
+        let id = params.get().unwrap().get_id();
+
+        ::capnp::capability::Promise::from_future(async move {
+            let node = service.find_successor(id.into()).await.unwrap();
+
+            let mut node_result = results.get().init_node();
+            node_result.set_id(node.id().into());
+
+            let mut address = node_result.init_address();
+            address.set_port(node.addr().port());
+
+            match node.addr().ip() {
+                IpAddr::V4(v4) => {
+                    let octets: Vec<u8> = v4.octets().to_vec();
+                    let mut ip = address.init_ipv4(4);
+                    for i in 0..4 {
+                        ip.set(i, octets[i as usize]);
+                    }
+                },
+                IpAddr::V6(v6) => {
+                    let segments: Vec<u16> = v6.segments().to_vec();
+                    let mut ip = address.init_ipv6(8);
+                    for i in 0..8 {
+                        ip.set(i, segments[i as usize]);
+                    }
+                }
+            }
+
+            Ok(())
+        })
     }
 }
 
@@ -83,8 +81,11 @@ impl Server {
     pub async fn run(&self) {
         tokio::task::LocalSet::new()
             .run_until(async move {
+                let server = NodeServerImpl {
+                    node: self.node.clone(),
+                };
                 let listener = tokio::net::TcpListener::bind(&self.addr).await.unwrap();
-                let chord_node_client: chord_capnp::chord_node::Client = capnp_rpc::new_client(NodeServerImpl);
+                let chord_node_client: chord_capnp::chord_node::Client = capnp_rpc::new_client(server);
 
                 loop {
                     let (stream, _) = listener.accept().await.unwrap();
