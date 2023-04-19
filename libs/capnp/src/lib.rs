@@ -6,18 +6,13 @@ use std::{
 use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
 use chord_rs::NodeService;
 use client::ChordCapnpClient;
-use futures::{AsyncReadExt, TryFutureExt};
+use futures::{AsyncReadExt};
 
 pub mod client;
 pub mod parser;
 mod server;
 
 pub mod chord_capnp {
-    use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
-
-    use chord_rs::{client::ClientError, Node};
-
-    use self::chord_node::node::ip_address;
 
     include!(concat!(env!("OUT_DIR"), "/capnp/chord_capnp.rs"));
 }
