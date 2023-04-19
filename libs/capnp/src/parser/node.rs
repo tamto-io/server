@@ -40,6 +40,7 @@ impl TryFrom<ip_address::Reader<'_>> for SocketAddr {
                     Err(super::ParserError::InvalidIp("Error parsing ipv4 address".to_string()))
                 }
             }
+
             ip_address::Which::Ipv6(Ok(ipv6)) => {
                 let mut array = [0; 8];
                 if let Some(ip) = ipv6.as_slice() {
@@ -121,8 +122,6 @@ mod tests {
     use std::net::SocketAddr;
     use capnp::message;
     use crate::{chord_capnp, parser::ResultBuilder};
-
-
 
     #[test]
     fn test_socket_addr_ipv4_to_ip_address() {

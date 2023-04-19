@@ -13,6 +13,8 @@ pub mod parser;
 mod server;
 
 pub mod chord_capnp {
+    use chord_rs::error::ServiceError;
+
 
     include!(concat!(env!("OUT_DIR"), "/capnp/chord_capnp.rs"));
 }
