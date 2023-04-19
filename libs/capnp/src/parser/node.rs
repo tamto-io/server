@@ -32,12 +32,16 @@ impl TryFrom<ip_address::Reader<'_>> for SocketAddr {
                 let mut array = [0; 4];
                 if let Some(ip) = ipv4.as_slice() {
                     if ip.len() != 4 {
-                        return Err(super::ParserError::InvalidIp("IPv4 should contain 4 chunks".to_string()));
+                        return Err(super::ParserError::InvalidIp(
+                            "IPv4 should contain 4 chunks".to_string(),
+                        ));
                     }
                     array.copy_from_slice(ip);
                     Ok(SocketAddr::new(IpAddr::V4(Ipv4Addr::from(array)), port))
                 } else {
-                    Err(super::ParserError::InvalidIp("Error parsing ipv4 address".to_string()))
+                    Err(super::ParserError::InvalidIp(
+                        "Error parsing ipv4 address".to_string(),
+                    ))
                 }
             }
 
@@ -45,20 +49,26 @@ impl TryFrom<ip_address::Reader<'_>> for SocketAddr {
                 let mut array = [0; 8];
                 if let Some(ip) = ipv6.as_slice() {
                     if ip.len() != 8 {
-                        return Err(super::ParserError::InvalidIp("IPv6 should contain 8 chunks, each containing u16".to_string()));
+                        return Err(super::ParserError::InvalidIp(
+                            "IPv6 should contain 8 chunks, each containing u16".to_string(),
+                        ));
                     }
                     array.copy_from_slice(ip);
                     Ok(SocketAddr::new(IpAddr::V6(Ipv6Addr::from(array)), port))
                 } else {
-                    Err(super::ParserError::InvalidIp("Error parsing IPv6 address".to_string()))
+                    Err(super::ParserError::InvalidIp(
+                        "Error parsing IPv6 address".to_string(),
+                    ))
                 }
             }
-            ip_address::Which::Ipv4(Err(err)) => {
-                Err(super::ParserError::InvalidIp(format!("Error parsing ipv4 address: {}", err)))
-            }
-            ip_address::Which::Ipv6(Err(err)) => {
-                Err(super::ParserError::InvalidIp(format!("Error parsing ipv6 address: {}", err)))
-            }
+            ip_address::Which::Ipv4(Err(err)) => Err(super::ParserError::InvalidIp(format!(
+                "Error parsing ipv4 address: {}",
+                err
+            ))),
+            ip_address::Which::Ipv6(Err(err)) => Err(super::ParserError::InvalidIp(format!(
+                "Error parsing ipv6 address: {}",
+                err
+            ))),
         };
 
         address
@@ -119,9 +129,10 @@ impl<'a> ResultBuilder<IpAddr> for chord_capnp::chord_node::node::ip_address::Bu
 }
 
 mod tests {
-    use std::net::SocketAddr;
-    use capnp::message;
+    #![allow(unused_imports)] // I'm not sure why the compiler complains about unused imports here
     use crate::{chord_capnp, parser::ResultBuilder};
+    use capnp::message;
+    use std::net::SocketAddr;
 
     #[test]
     fn test_socket_addr_ipv4_to_ip_address() {
@@ -170,13 +181,17 @@ mod tests {
         let ip = SocketAddr::try_from(reader);
 
         assert!(ip.is_err());
-        assert_eq!(ip.unwrap_err().to_string(), "Error parsing ipv4 address".to_string());
+        assert_eq!(
+            ip.unwrap_err().to_string(),
+            "Error parsing ipv4 address".to_string()
+        );
     }
 
     #[test]
     fn test_invalid_ipv6_to_deserialization() {
         let mut message = message::Builder::new_default();
-        let mut builder = message.init_root::<chord_capnp::chord_node::node::ip_address::Builder<'_>>();
+        let mut builder =
+            message.init_root::<chord_capnp::chord_node::node::ip_address::Builder<'_>>();
         builder.set_port(8080);
         let mut ip_builder = builder.init_ipv6(4);
         ip_builder.set(0, 0);
@@ -187,13 +202,17 @@ mod tests {
         let ip = SocketAddr::try_from(reader);
 
         assert!(ip.is_err());
-        assert_eq!(ip.unwrap_err().to_string(), "IPv6 should contain 8 chunks, each containing u16".to_string());
+        assert_eq!(
+            ip.unwrap_err().to_string(),
+            "IPv6 should contain 8 chunks, each containing u16".to_string()
+        );
     }
 
     #[test]
     fn test_invalid_ipv4_to_deserialization() {
         let mut message = message::Builder::new_default();
-        let mut builder = message.init_root::<chord_capnp::chord_node::node::ip_address::Builder<'_>>();
+        let mut builder =
+            message.init_root::<chord_capnp::chord_node::node::ip_address::Builder<'_>>();
         builder.set_port(8080);
         let mut ip_builder = builder.init_ipv4(2);
         ip_builder.set(0, 0);
@@ -204,6 +223,9 @@ mod tests {
         let ip = SocketAddr::try_from(reader);
 
         assert!(ip.is_err());
-        assert_eq!(ip.unwrap_err().to_string(), "IPv4 should contain 4 chunks".to_string());
+        assert_eq!(
+            ip.unwrap_err().to_string(),
+            "IPv4 should contain 4 chunks".to_string()
+        );
     }
 }

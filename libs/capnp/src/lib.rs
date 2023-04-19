@@ -1,20 +1,15 @@
-use std::{
-    net::{IpAddr, SocketAddr},
-    sync::Arc,
-};
+use std::{net::SocketAddr, sync::Arc};
 
 use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
 use chord_rs::NodeService;
 use client::ChordCapnpClient;
-use futures::{AsyncReadExt};
+use futures::AsyncReadExt;
 
 pub mod client;
 pub mod parser;
 mod server;
 
 pub mod chord_capnp {
-    use chord_rs::error::ServiceError;
-
 
     include!(concat!(env!("OUT_DIR"), "/capnp/chord_capnp.rs"));
 }

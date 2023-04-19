@@ -1,6 +1,6 @@
-use std::{sync::Arc, fmt::Display};
+use std::{fmt::Display, sync::Arc};
 
-use chord_rs::{NodeService};
+use chord_rs::NodeService;
 
 use crate::{chord_capnp, parser::ResultBuilder};
 
@@ -52,7 +52,8 @@ impl chord_capnp::chord_node::Server for NodeServerImpl {
 
         ::capnp::capability::Promise::from_future(async move {
             let id = params.get()?.get_id();
-            let node = service.find_successor(id.into())
+            let node = service
+                .find_successor(id.into())
                 .await
                 .map_err(error_parser)?;
 
@@ -63,6 +64,9 @@ impl chord_capnp::chord_node::Server for NodeServerImpl {
     }
 }
 
-fn error_parser<T>(err: T) -> capnp::Error where T: Display {
+fn error_parser<T>(err: T) -> capnp::Error
+where
+    T: Display,
+{
     capnp::Error::failed(format!("{}", err))
 }
