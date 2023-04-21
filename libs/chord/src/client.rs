@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use mockall::automock;
 use std::fmt::{Display, Formatter};
 use std::net::SocketAddr;
+use tokio::sync::oneshot::error::RecvError;
 
 #[automock]
 #[async_trait]
@@ -64,6 +65,13 @@ impl Display for ClientError {
             ClientError::NotInitialized => write!(f, "Client not initialized"),
             ClientError::Unexpected(message) => write!(f, "{}", message),
         }
+    }
+}
+
+impl From<RecvError> for ClientError {
+    fn from(value: RecvError) -> Self {
+        log::error!("Error while receiving command result: {}", value);
+        ClientError::Unexpected("Error while receiving command result".to_string())
     }
 }
 

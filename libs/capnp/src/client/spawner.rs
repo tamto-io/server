@@ -62,12 +62,9 @@ impl LocalSpawner {
             super::command::Command::FindSuccessor(node_id, resp) => {
                 super::Command::find_successor(client, node_id, resp).await
             }
-            // super::Command::Ping(resp) => {
-            //     let request = client.ping_request();
-            //     let _reply = request.send().promise.await.unwrap();
-            //     resp.send(Ok(())).unwrap();
-            // }
-            _ => {}
+            super::command::Command::Predecessor(_) => todo!(),
+            super::command::Command::Notify(_, _) => todo!(),
+            super::command::Command::GetFingerTable(_) => todo!(),
         }
     }
 }

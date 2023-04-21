@@ -27,7 +27,7 @@ impl Client for ChordCapnpClient {
         let (tx, rx) = oneshot::channel();
         self.spawner.spawn(Command::FindSuccessor(id, tx));
 
-        rx.await.unwrap()
+        rx.await?
     }
 
     async fn successor(&self) -> Result<Node, ClientError> {
