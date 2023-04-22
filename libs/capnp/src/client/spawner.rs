@@ -62,7 +62,9 @@ impl LocalSpawner {
             super::command::Command::FindSuccessor(node_id, resp) => {
                 super::Command::find_successor(client, node_id, resp).await
             }
-            super::command::Command::Predecessor(_) => todo!(),
+            super::command::Command::Predecessor(resp) => {
+                super::Command::get_predecessor(client, resp).await
+            },
             super::command::Command::Notify(_, _) => todo!(),
             super::command::Command::GetFingerTable(_) => todo!(),
         }

@@ -1,5 +1,12 @@
 @0x9fd191a2e74c5ef6;
 
+struct Option(T) {
+  union {
+    none @0 :Void;
+    some @1 :T;
+  }
+}
+
 interface ChordNode {
   struct Node {
     id @0 :UInt64;
@@ -17,4 +24,10 @@ interface ChordNode {
 
   ping @0 ();
   findSuccessor @1 (id :UInt64) -> (node :Node);
+  getPredecessor @2 () -> (node :Option(Node));
+  notify @3 (node :Node);
+
+  # Inspection methods
+  # TODO: It should be moved to a separate service 
+  getFingerTable @4 () -> (fingerTable :List(Node));
 }
