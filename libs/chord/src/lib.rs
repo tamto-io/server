@@ -1,6 +1,7 @@
 pub mod client;
 mod node;
 mod service;
+pub mod server;
 
 use seahash::hash;
 use std::fmt::Display;

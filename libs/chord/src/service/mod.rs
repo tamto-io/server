@@ -140,13 +140,19 @@ impl<C: Client + Clone> NodeService<C> {
     /// > **Note**
     /// >
     /// > This method should be called periodically.
-    pub async fn check_predecessor(&self) {
+    pub async fn check_predecessor(&self) -> Result<(), error::ServiceError> {
         if let Some(predecessor) = self.store().predecessor() {
             let client: C = predecessor.client().await;
-            // let client: C = predecessor.client();
-            if let Err(ClientError::ConnectionFailed(_)) = client.ping().await {
-                self.store().unset_predecessor();
-            };
+            match client.ping().await {
+                Ok(_) => { Ok(()) }
+                Err(ClientError::ConnectionFailed(_)) => {
+                    self.store().unset_predecessor();
+                    Ok(())
+                }
+                Err(e) => Err(e.into())
+            }
+        } else {
+            Ok(())
         }
     }
 

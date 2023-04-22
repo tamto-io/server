@@ -45,62 +45,66 @@ impl ChordService {
         let node_service = Arc::new(NodeService::new(addr));
 
         if let Some(ring) = ring {
-            let node_service = node_service.clone();
-            // TODO: make this configurable
-            const WAIT_BETWEEN_RETRIES: Duration = Duration::from_secs(3);
             const MAX_RETRIES: u32 = 5;
-            let mut attempt = 0;
-            loop {
-                attempt += 1;
-                log::info!("{} attempt to join ring: {:?}", attempt, ring);
 
-                let node = Node::new(ring);
-                tokio::time::sleep(Duration::from_secs(1)).await;
+            chord_rs::server::join_ring(node_service.clone(), ring, MAX_RETRIES).await;
+            // let node_service = node_service.clone();
+            // // TODO: make this configurable
+            // const WAIT_BETWEEN_RETRIES: Duration = Duration::from_secs(3);
+            // let mut attempt = 0;
+            // loop {
+            //     attempt += 1;
+            //     log::info!("{} attempt to join ring: {:?}", attempt, ring);
 
-                if let Ok(_) = node_service.join(node).await {
-                    log::info!("Joined ring: {:?}", ring);
-                    break;
-                } else {
-                    if attempt >= MAX_RETRIES {
-                        log::error!("Failed to join ring: {:?}", ring);
-                        panic!("Failed to join ring: {:?}", ring)
-                    }
-                }
+            //     let node = Node::new(ring);
+            //     tokio::time::sleep(Duration::from_secs(1)).await;
 
-                tokio::time::sleep(WAIT_BETWEEN_RETRIES).await;
-            }
+            //     if let Ok(_) = node_service.join(node).await {
+            //         log::info!("Joined ring: {:?}", ring);
+            //         break;
+            //     } else {
+            //         if attempt >= MAX_RETRIES {
+            //             log::error!("Failed to join ring: {:?}", ring);
+            //             panic!("Failed to join ring: {:?}", ring)
+            //         }
+            //     }
+
+            //     tokio::time::sleep(WAIT_BETWEEN_RETRIES).await;
+            // }
         }
 
-        let service = node_service.clone();
-        tokio::spawn(async move {
-            loop {
-                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                // log::info!("Stabilizing...");
-                if let Err(err) = service.stabilize().await {
-                    log::error!("Stabilize error: {:?}", err);
-                }
-            }
-        });
+        chord_rs::server::background_tasks(node_service.clone());
 
         // let service = node_service.clone();
         // tokio::spawn(async move {
         //     loop {
         //         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-        //         println!("Checking predecessor...");
-        //         service.check_predecessor();
+        //         // log::info!("Stabilizing...");
+        //         if let Err(err) = service.stabilize().await {
+        //             log::error!("Stabilize error: {:?}", err);
+        //         }
         //     }
         // });
 
-        let service = node_service.clone();
-        tokio::spawn(async move {
-            // TODO: remove this and make it wait for the node to join the ring before starting fixing fingers
-            // tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-            loop {
-                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                // log::info!("Fixing fingers...");
-                service.fix_fingers().await;
-            }
-        });
+        // // let service = node_service.clone();
+        // // tokio::spawn(async move {
+        // //     loop {
+        // //         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        // //         println!("Checking predecessor...");
+        // //         service.check_predecessor();
+        // //     }
+        // // });
+
+        // let service = node_service.clone();
+        // tokio::spawn(async move {
+        //     // TODO: remove this and make it wait for the node to join the ring before starting fixing fingers
+        //     // tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+        //     loop {
+        //         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        //         // log::info!("Fixing fingers...");
+        //         service.fix_fingers().await;
+        //     }
+        // });
 
         Self { node: node_service }
     }

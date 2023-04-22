@@ -22,6 +22,11 @@ pub struct Server {
 impl Server {
     pub async fn new(addr: SocketAddr, ring: Option<SocketAddr>) -> Self {
         let node_service = Arc::new(NodeService::new(addr));
+        if let Some(ring) = ring {
+            const MAX_RETRIES: u32 = 5;
+            chord_rs::server::join_ring(node_service.clone(), ring, MAX_RETRIES).await;
+        }
+        chord_rs::server::background_tasks(node_service.clone());
 
         Self {
             addr,

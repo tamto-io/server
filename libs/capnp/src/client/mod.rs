@@ -38,27 +38,27 @@ impl Client for ChordCapnpClient {
         let (tx, rx) = oneshot::channel();
         self.spawner.spawn(Command::Predecessor(tx));
 
-        rx.await.unwrap()
+        rx.await?
     }
 
     async fn notify(&self, predecessor: Node) -> Result<(), ClientError> {
         let (tx, rx) = oneshot::channel();
         self.spawner.spawn(Command::Notify(predecessor, tx));
 
-        rx.await.unwrap()
+        rx.await?
     }
 
     async fn get_finger_table(&self) -> Result<Vec<Node>, ClientError> {
         let (tx, rx) = oneshot::channel();
         self.spawner.spawn(Command::GetFingerTable(tx));
 
-        rx.await.unwrap()
+        rx.await?
     }
 
     async fn ping(&self) -> Result<(), ClientError> {
         let (tx, rx) = oneshot::channel();
         self.spawner.spawn(Command::Ping(tx));
 
-        rx.await.unwrap()
+        rx.await?
     }
 }
