@@ -78,6 +78,20 @@ impl Command {
 
         sender.send(result).unwrap();
     }
+
+    // pub(crate) async fn get_finger_table(
+    //     client: chord_capnp::chord_node::Client,
+    //     sender: CmdResult<Vec<Node>>,
+    // ) {
+    //     let request = client.get_finger_table_request();
+
+    //     let reply = request.send().promise.await.unwrap(); // TODO: Handle error
+    //     let table = reply.get().unwrap().get_table().unwrap();
+    //     let table = table.iter().map(|node| node.unwrap().try_into()).collect::<Result<Vec<Node>, ParserError>>()
+    //         .map_err(|err: ParserError| err.into());
+
+    //     sender.send(table).unwrap();
+    // }
 }
 
 fn map_err<T>(err: capnp::Error) -> Result<T, ClientError> {

@@ -87,6 +87,23 @@ impl ResultBuilder<Node> for chord_capnp::chord_node::FindSuccessorResults {
     }
 }
 
+/// Insert a `Option<Node>` into a `GetPredecessorResults` struct.
+impl ResultBuilder<Option<Node>> for chord_capnp::chord_node::GetPredecessorResults {
+    type Output = ();
+    #[inline]
+    fn insert(mut self, value: Option<Node>) -> Result<Self::Output, capnp::Error> {
+        let mut result = self.get().init_node();
+        if let Some(node) = value {
+            let some = result.init_some();
+            some.insert(node)?;
+        } else {
+            result.set_none(());
+        }
+
+        Ok(())
+    }
+}
+
 impl ResultBuilder<Node> for chord_capnp::chord_node::node::Builder<'_> {
     type Output = ();
 

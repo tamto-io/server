@@ -1,8 +1,8 @@
 use std::{fmt::Display, sync::Arc};
 
-use chord_rs::NodeService;
+use chord_rs::{NodeService, Node};
 
-use crate::{chord_capnp, parser::ResultBuilder};
+use crate::{chord_capnp, parser::{ResultBuilder, ParserError}};
 
 use super::client::ChordCapnpClient;
 
@@ -58,6 +58,57 @@ impl chord_capnp::chord_node::Server for NodeServerImpl {
                 .map_err(error_parser)?;
 
             results.insert(node)?;
+
+            Ok(())
+        })
+    }
+
+    /// Get the predecessor of the node
+    /// 
+    /// # Arguments
+    /// 
+    /// * `_params` - Cap'n'proto message, not used.
+    /// * `results` - Cap'n'proto message to write the successor to.
+    fn get_predecessor(
+        &mut self,
+        _params: chord_capnp::chord_node::GetPredecessorParams,
+        results: chord_capnp::chord_node::GetPredecessorResults,
+    ) -> capnp::capability::Promise<(), capnp::Error> {
+        log::info!("GetPredecessor received");
+
+        let service = self.node.clone();
+
+        ::capnp::capability::Promise::from_future(async move {
+            let maybe_node = service
+                .get_predecessor()
+                .await
+                .map_err(error_parser)?;
+            results.insert(maybe_node)?;
+
+            Ok(())
+        })
+    }
+
+    /// Notify the node of a new predecessor
+    /// 
+    /// # Arguments
+    /// 
+    /// * `params` - Cap'n'proto message containing the potential new predecessor.
+    /// * `_results` - Cap'n'proto message, not used.
+    fn notify(
+        &mut self,
+        params: chord_capnp::chord_node::NotifyParams,
+        _results: chord_capnp::chord_node::NotifyResults,
+    ) -> capnp::capability::Promise<(), capnp::Error> {
+        log::info!("Notify received");
+
+        let service = self.node.clone();
+
+        ::capnp::capability::Promise::from_future(async move {
+            let node = params.get()?.get_node()?;
+            let node: Node = node.try_into().unwrap(); // TODO: error handling
+            service
+                .notify(node);
 
             Ok(())
         })
