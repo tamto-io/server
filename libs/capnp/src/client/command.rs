@@ -1,8 +1,9 @@
 use chord_rs::{client::ClientError, Node, NodeId};
 
-use crate::{chord_capnp, parser::ParserError};
+use crate::{chord_capnp, parser::{ParserError, ResultBuilder}};
 
 use super::CmdResult;
+
 
 #[derive(Debug)]
 pub(crate) enum Command {
@@ -61,6 +62,21 @@ impl Command {
         };
 
         sender.send(node).unwrap();
+    }
+
+    pub(crate) async fn notify(
+        client: chord_capnp::chord_node::Client,
+        predecessor: Node,
+        sender: CmdResult<()>,
+    ) {
+        let mut request = client.notify_request();
+        let node = request.get().init_node();
+        let result = node.insert(predecessor)
+            .map_err(|err: capnp::Error| ClientError::Unexpected(format!("{}", err)));
+
+        let _ = request.send().promise.await;
+
+        sender.send(result).unwrap();
     }
 }
 

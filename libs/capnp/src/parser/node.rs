@@ -80,10 +80,20 @@ impl ResultBuilder<Node> for chord_capnp::chord_node::FindSuccessorResults {
     type Output = ();
     #[inline]
     fn insert(mut self, value: Node) -> Result<Self::Output, capnp::Error> {
-        let mut node = self.get().init_node();
-        node.set_id(value.id().into());
+        let node = self.get().init_node();
+        node.insert(value)?;
 
-        node.init_address().insert(value.addr())?;
+        Ok(())
+    }
+}
+
+impl ResultBuilder<Node> for chord_capnp::chord_node::node::Builder<'_> {
+    type Output = ();
+
+    #[inline]
+    fn insert(mut self, value: Node) -> Result<Self::Output, capnp::Error> {
+        self.set_id(value.id().into());
+        self.init_address().insert(value.addr())?;
 
         Ok(())
     }
