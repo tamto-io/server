@@ -55,6 +55,7 @@ impl LocalSpawner {
         let mut rpc_system = Self::rpc_system(addr).await;
         let client: chord_capnp::chord_node::Client =
             rpc_system.bootstrap(rpc_twoparty_capnp::Side::Server);
+        let disconnector = rpc_system.get_disconnector();
         tokio::task::spawn_local(rpc_system);
 
         match command {
@@ -69,6 +70,10 @@ impl LocalSpawner {
                 super::Command::notify(client, node, resp).await
             },
             super::command::Command::GetFingerTable(_) => todo!(),
+        }
+
+        if let Err(err) = disconnector.await {
+            log::error!("Error disconnecting: {:?}", err);
         }
     }
 }

@@ -24,7 +24,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let server = CapnpServer::new(addr, cli.ring).await;
 
-    server.run().await;
+    server.run(cli.max_connections).await;
     Ok(())
 }
 

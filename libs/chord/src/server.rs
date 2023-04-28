@@ -2,7 +2,7 @@ use std::{sync::Arc, time::Duration, net::SocketAddr};
 
 use crate::{Client, NodeService, Node};
 
-pub async fn join_ring<T: Client + Clone>(node_service: Arc<NodeService<T>>, ring: SocketAddr, max_retries: u32) {
+pub async fn join_ring<T: Client + Clone + Sync + Send>(node_service: Arc<NodeService<T>>, ring: SocketAddr, max_retries: u32) {
     // TODO: make this configurable
     const WAIT_BETWEEN_RETRIES: Duration = Duration::from_secs(3);
     let mut attempt = 0;
@@ -37,9 +37,9 @@ pub fn background_tasks<T: Client + Clone + Sync + Send + 'static>(node_service:
                 log::error!("Stabilize error: {:?}", err);
             }
 
-            if let Err(err) = service.check_predecessor().await {
-                log::error!("Check predecessor error: {:?}", err);
-            }
+            // if let Err(err) = service.check_predecessor().await {
+            //     log::error!("Check predecessor error: {:?}", err);
+            // }
 
             service.fix_fingers().await;
         }

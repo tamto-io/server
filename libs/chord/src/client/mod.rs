@@ -1,9 +1,12 @@
+mod pool;
+
 use crate::{Node, NodeId};
 use async_trait::async_trait;
 use mockall::automock;
 use std::fmt::{Display, Formatter};
 use std::net::SocketAddr;
 use tokio::sync::oneshot::error::RecvError;
+pub use pool::ClientsPool;
 
 #[automock]
 #[async_trait]
@@ -52,6 +55,7 @@ pub trait Client {
 #[derive(Debug)]
 pub enum ClientError {
     ConnectionFailed(Node),
+    InvalidRequest(String),
     NotInitialized,
     Unexpected(String),
 }
@@ -64,6 +68,7 @@ impl Display for ClientError {
             }
             ClientError::NotInitialized => write!(f, "Client not initialized"),
             ClientError::Unexpected(message) => write!(f, "{}", message),
+            ClientError::InvalidRequest(message) => write!(f, "Invalid request: {}", message)
         }
     }
 }
@@ -74,6 +79,19 @@ impl From<RecvError> for ClientError {
         ClientError::Unexpected("Error while receiving command result".to_string())
     }
 }
+
+// impl <T> From<T> for ClientError
+// where
+//     T: IntoClientError,
+// {
+//     fn from(value: T) -> Self {
+//         value.into()
+//     }
+// }
+
+// pub trait IntoClientError {
+//     fn into(self) -> ClientError;
+// }
 
 pub enum ClientStatus {
     NotConnected,

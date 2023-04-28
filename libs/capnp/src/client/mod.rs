@@ -8,7 +8,7 @@ use self::{command::Command, spawner::LocalSpawner};
 mod command;
 mod spawner;
 
-type CmdResult<T> = oneshot::Sender<Result<T, ClientError>>;
+type CmdResult<T> = oneshot::Sender<Result<T, CapnpClientError>>;
 
 #[derive(Clone)]
 pub struct ChordCapnpClient {
@@ -27,7 +27,8 @@ impl Client for ChordCapnpClient {
         let (tx, rx) = oneshot::channel();
         self.spawner.spawn(Command::FindSuccessor(id, tx));
 
-        rx.await?
+        let result = rx.await?;
+        Ok(result?)
     }
 
     async fn successor(&self) -> Result<Node, ClientError> {
@@ -38,27 +39,38 @@ impl Client for ChordCapnpClient {
         let (tx, rx) = oneshot::channel();
         self.spawner.spawn(Command::Predecessor(tx));
 
-        rx.await?
+        let result = rx.await?;
+        Ok(result?)
     }
 
     async fn notify(&self, predecessor: Node) -> Result<(), ClientError> {
         let (tx, rx) = oneshot::channel();
         self.spawner.spawn(Command::Notify(predecessor, tx));
 
-        rx.await?
+        let result = rx.await?;
+        Ok(result?)
     }
 
     async fn get_finger_table(&self) -> Result<Vec<Node>, ClientError> {
         let (tx, rx) = oneshot::channel();
         self.spawner.spawn(Command::GetFingerTable(tx));
 
-        rx.await?
+        let result = rx.await?;
+        Ok(result?)
     }
 
     async fn ping(&self) -> Result<(), ClientError> {
         let (tx, rx) = oneshot::channel();
         self.spawner.spawn(Command::Ping(tx));
 
-        rx.await?
+        let result = rx.await?;
+        Ok(result?)
     }
+}
+
+#[derive(Debug)]
+pub(crate) enum CapnpClientError {
+    InvalidRequest(String),
+    ConnectionFailed(Node),
+    Unexpected(String),
 }

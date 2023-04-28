@@ -1,6 +1,6 @@
-use chord_rs::{client::ClientError, Node, NodeId};
+use chord_rs::{Node, NodeId};
 
-use crate::{chord_capnp, parser::{ParserError, ResultBuilder}};
+use crate::{chord_capnp, parser::{ParserError, ResultBuilder}, client::CapnpClientError};
 
 use super::CmdResult;
 
@@ -47,19 +47,24 @@ impl Command {
         client: chord_capnp::chord_node::Client,
         sender: CmdResult<Option<Node>>,
     ) {
-        let request = client.get_predecessor_request();
+        async fn get_predecessor_impl(client: chord_capnp::chord_node::Client) -> Result<Option<Node>, CapnpClientError> {
+            let request = client.get_predecessor_request();
 
-        let reply = request.send().promise.await.unwrap(); // TODO: Handle error
-        let node = reply.get().unwrap().get_node().unwrap();
-        let node = match node.which() {
-            Ok(chord_capnp::option::None(())) => Ok(None),
-            Ok(chord_capnp::option::Some(Ok(reader))) => {
-                let result: Result<Node, ClientError> = reader.try_into().map_err(|err: ParserError| err.into());
-                result.map(Some)
+            let reply = request.send().promise.await?;
+            let node = reply.get().unwrap().get_node().unwrap();
+            match node.which() {
+                Ok(chord_capnp::option::None(())) => Ok(None),
+                Ok(chord_capnp::option::Some(Ok(reader))) => {
+                    let result: Result<Node, ParserError> = reader.try_into();
+                    let node = result?;
+                    Ok(Some(node))
+                }
+                Ok(chord_capnp::option::Some(Err(err))) => Err(err.into()),
+                Err(err) => Err(err.into()),
             }
-            Ok(chord_capnp::option::Some(Err(err))) => map_err(err.into()),
-            Err(err) => map_err(err.into()),
-        };
+        }
+
+        let node = get_predecessor_impl(client).await;
 
         sender.send(node).unwrap();
     }
@@ -69,12 +74,16 @@ impl Command {
         predecessor: Node,
         sender: CmdResult<()>,
     ) {
-        let mut request = client.notify_request();
-        let node = request.get().init_node();
-        let result = node.insert(predecessor)
-            .map_err(|err: capnp::Error| ClientError::Unexpected(format!("{}", err)));
+        async fn notify_impl(client: chord_capnp::chord_node::Client, predecessor: Node) -> Result<(), CapnpClientError> {
+            let mut request = client.notify_request();
+            let node = request.get().init_node();
+            node.insert(predecessor)?;
 
-        let _ = request.send().promise.await;
+            let _ = request.send().promise.await;
+            Ok(())
+        }
+
+        let result = notify_impl(client, predecessor).await;
 
         sender.send(result).unwrap();
     }
@@ -92,13 +101,4 @@ impl Command {
 
     //     sender.send(table).unwrap();
     // }
-}
-
-fn map_err<T>(err: capnp::Error) -> Result<T, ClientError> {
-    Err(ClientError::Unexpected(format!("{}", err)))
-}
-impl From<ParserError> for ClientError {
-    fn from(err: ParserError) -> Self {
-        Self::Unexpected(format!("{}", err))
-    }
 }

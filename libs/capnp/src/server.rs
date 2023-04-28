@@ -2,7 +2,7 @@ use std::{fmt::Display, sync::Arc};
 
 use chord_rs::{NodeService, Node};
 
-use crate::{chord_capnp, parser::{ResultBuilder, ParserError}};
+use crate::{chord_capnp, parser::{ResultBuilder}};
 
 use super::client::ChordCapnpClient;
 
