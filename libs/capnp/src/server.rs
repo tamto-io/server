@@ -31,7 +31,7 @@ impl chord_capnp::chord_node::Server for NodeServerImpl {
         _params: chord_capnp::chord_node::PingParams,
         mut _results: chord_capnp::chord_node::PingResults,
     ) -> ::capnp::capability::Promise<(), ::capnp::Error> {
-        log::info!("Ping received");
+        log::trace!("Ping received");
         ::capnp::capability::Promise::ok(())
     }
 
@@ -46,7 +46,7 @@ impl chord_capnp::chord_node::Server for NodeServerImpl {
         params: chord_capnp::chord_node::FindSuccessorParams,
         results: chord_capnp::chord_node::FindSuccessorResults,
     ) -> capnp::capability::Promise<(), capnp::Error> {
-        log::info!("FindSuccessor received");
+        log::trace!("FindSuccessor received");
 
         let service = self.node.clone();
 
@@ -74,7 +74,7 @@ impl chord_capnp::chord_node::Server for NodeServerImpl {
         _params: chord_capnp::chord_node::GetPredecessorParams,
         results: chord_capnp::chord_node::GetPredecessorResults,
     ) -> capnp::capability::Promise<(), capnp::Error> {
-        log::info!("GetPredecessor received");
+        log::trace!("GetPredecessor received");
 
         let service = self.node.clone();
 
@@ -97,7 +97,7 @@ impl chord_capnp::chord_node::Server for NodeServerImpl {
         params: chord_capnp::chord_node::NotifyParams,
         _results: chord_capnp::chord_node::NotifyResults,
     ) -> capnp::capability::Promise<(), capnp::Error> {
-        log::info!("Notify received");
+        log::trace!("Notify received");
 
         let service = self.node.clone();
 
