@@ -19,7 +19,7 @@ jobs:
     - name: Install Protoc
       uses: arduino/setup-protoc@v1
     - name: Install Capnp
-      run: apt install -y capnproto
+      run: sudo apt install -y capnproto
     - name: Build
       run: cargo build --verbose
     - name: Run tests
