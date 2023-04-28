@@ -1,4 +1,7 @@
-use std::{collections::HashMap, sync::{Arc, Mutex}};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
 use crate::{Client, Node, NodeId};
 
@@ -44,15 +47,11 @@ pub enum ClientsPoolError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{NodeId, Node};
-    use crate::client::{Client, MockClient};
-    use crate::service::error::ServiceError;
+    use crate::client::MockClient;
+    use crate::Node;
     use std::net::SocketAddr;
 
-    use crate::node::store::NodeStore;
-    use crate::node::Finger;
     use lazy_static::lazy_static;
-    use mockall::predicate;
     use std::sync::{Mutex, MutexGuard};
 
     lazy_static! {
@@ -76,9 +75,8 @@ mod tests {
         let _m = get_lock(&MTX);
         let ctx = MockClient::init_context();
 
-        ctx.expect().returning(|_addr: SocketAddr| {
-            MockClient::new()
-        });
+        ctx.expect()
+            .returning(|_addr: SocketAddr| MockClient::new());
 
         let node = Node::new("[::1]:42012".parse().unwrap());
 

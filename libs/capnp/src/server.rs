@@ -1,8 +1,8 @@
 use std::{fmt::Display, sync::Arc};
 
-use chord_rs::{NodeService, Node};
+use chord_rs::{Node, NodeService};
 
-use crate::{chord_capnp, parser::{ResultBuilder}};
+use crate::{chord_capnp, parser::ResultBuilder};
 
 use super::client::ChordCapnpClient;
 
@@ -64,9 +64,9 @@ impl chord_capnp::chord_node::Server for NodeServerImpl {
     }
 
     /// Get the predecessor of the node
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `_params` - Cap'n'proto message, not used.
     /// * `results` - Cap'n'proto message to write the successor to.
     fn get_predecessor(
@@ -79,10 +79,7 @@ impl chord_capnp::chord_node::Server for NodeServerImpl {
         let service = self.node.clone();
 
         ::capnp::capability::Promise::from_future(async move {
-            let maybe_node = service
-                .get_predecessor()
-                .await
-                .map_err(error_parser)?;
+            let maybe_node = service.get_predecessor().await.map_err(error_parser)?;
             results.insert(maybe_node)?;
 
             Ok(())
@@ -90,9 +87,9 @@ impl chord_capnp::chord_node::Server for NodeServerImpl {
     }
 
     /// Notify the node of a new predecessor
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `params` - Cap'n'proto message containing the potential new predecessor.
     /// * `_results` - Cap'n'proto message, not used.
     fn notify(
@@ -107,8 +104,7 @@ impl chord_capnp::chord_node::Server for NodeServerImpl {
         ::capnp::capability::Promise::from_future(async move {
             let node = params.get()?.get_node()?;
             let node: Node = node.try_into().unwrap(); // TODO: error handling
-            service
-                .notify(node);
+            service.notify(node);
 
             Ok(())
         })

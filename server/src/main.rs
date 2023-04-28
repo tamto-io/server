@@ -1,7 +1,6 @@
 use log::LevelFilter;
 use simplelog::{ColorChoice, CombinedLogger, Config, TermLogger, TerminalMode};
 use tamto_capnp::Server as CapnpServer;
-use tamto_grpc::server::{ChordNodeServer, ChordService, Server};
 
 mod cli;
 use clap::Parser;

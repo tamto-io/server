@@ -1,7 +1,6 @@
 use std::num::ParseIntError;
 
 use chord_rs::{Client, NodeId};
-use tamto_grpc::client::ChordGrpcClient;
 
 use crate::cli::LookupArgs;
 

@@ -1,7 +1,6 @@
 use std::{
     net::{IpAddr, SocketAddr},
     sync::Arc,
-    time::Duration,
 };
 
 use chord_proto::chord_node_server::ChordNode;

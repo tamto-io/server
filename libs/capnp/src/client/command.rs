@@ -1,9 +1,12 @@
 use chord_rs::{Node, NodeId};
 
-use crate::{chord_capnp, parser::{ParserError, ResultBuilder}, client::CapnpClientError};
+use crate::{
+    chord_capnp,
+    client::CapnpClientError,
+    parser::{ParserError, ResultBuilder},
+};
 
 use super::CmdResult;
-
 
 #[derive(Debug)]
 pub(crate) enum Command {
@@ -47,7 +50,9 @@ impl Command {
         client: chord_capnp::chord_node::Client,
         sender: CmdResult<Option<Node>>,
     ) {
-        async fn get_predecessor_impl(client: chord_capnp::chord_node::Client) -> Result<Option<Node>, CapnpClientError> {
+        async fn get_predecessor_impl(
+            client: chord_capnp::chord_node::Client,
+        ) -> Result<Option<Node>, CapnpClientError> {
             let request = client.get_predecessor_request();
 
             let reply = request.send().promise.await?;
@@ -74,7 +79,10 @@ impl Command {
         predecessor: Node,
         sender: CmdResult<()>,
     ) {
-        async fn notify_impl(client: chord_capnp::chord_node::Client, predecessor: Node) -> Result<(), CapnpClientError> {
+        async fn notify_impl(
+            client: chord_capnp::chord_node::Client,
+            predecessor: Node,
+        ) -> Result<(), CapnpClientError> {
             let mut request = client.notify_request();
             let node = request.get().init_node();
             node.insert(predecessor)?;

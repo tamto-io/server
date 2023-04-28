@@ -71,6 +71,6 @@ impl Client for ChordCapnpClient {
 #[derive(Debug)]
 pub(crate) enum CapnpClientError {
     InvalidRequest(String),
-    ConnectionFailed(Node),
+    ConnectionFailed(String),
     Unexpected(String),
 }

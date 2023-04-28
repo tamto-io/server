@@ -1,8 +1,12 @@
-use std::{sync::Arc, time::Duration, net::SocketAddr};
+use std::{net::SocketAddr, sync::Arc, time::Duration};
 
-use crate::{Client, NodeService, Node};
+use crate::{Client, Node, NodeService};
 
-pub async fn join_ring<T: Client + Clone + Sync + Send>(node_service: Arc<NodeService<T>>, ring: SocketAddr, max_retries: u32) {
+pub async fn join_ring<T: Client + Clone + Sync + Send>(
+    node_service: Arc<NodeService<T>>,
+    ring: SocketAddr,
+    max_retries: u32,
+) {
     // TODO: make this configurable
     const WAIT_BETWEEN_RETRIES: Duration = Duration::from_secs(3);
     let mut attempt = 0;
@@ -27,7 +31,9 @@ pub async fn join_ring<T: Client + Clone + Sync + Send>(node_service: Arc<NodeSe
     }
 }
 
-pub fn background_tasks<T: Client + Clone + Sync + Send + 'static>(node_service: Arc<NodeService<T>>) {
+pub fn background_tasks<T: Client + Clone + Sync + Send + 'static>(
+    node_service: Arc<NodeService<T>>,
+) {
     let service = node_service.clone();
 
     tokio::spawn(async move {

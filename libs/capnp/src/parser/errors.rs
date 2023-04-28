@@ -13,7 +13,12 @@ impl From<ParserError> for CapnpClientError {
 impl From<capnp::Error> for CapnpClientError {
     fn from(value: capnp::Error) -> Self {
         log::error!("capnp error: {:?}", value);
-        CapnpClientError::Unexpected(value.to_string())
+        match value.kind {
+            capnp::ErrorKind::Failed => CapnpClientError::Unexpected(value.to_string()),
+            capnp::ErrorKind::Overloaded => CapnpClientError::Unexpected(value.to_string()),
+            capnp::ErrorKind::Disconnected => CapnpClientError::ConnectionFailed(value.to_string()),
+            capnp::ErrorKind::Unimplemented => CapnpClientError::Unexpected(value.to_string()),
+        }
     }
 }
 

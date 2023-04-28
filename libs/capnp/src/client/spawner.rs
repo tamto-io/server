@@ -65,10 +65,10 @@ impl LocalSpawner {
             }
             super::command::Command::Predecessor(resp) => {
                 super::Command::get_predecessor(client, resp).await
-            },
+            }
             super::command::Command::Notify(node, resp) => {
                 super::Command::notify(client, node, resp).await
-            },
+            }
             super::command::Command::GetFingerTable(_) => todo!(),
         }
 

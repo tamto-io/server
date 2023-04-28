@@ -3,7 +3,7 @@ use crate::node::store::{Db, NodeStore};
 use crate::node::Finger;
 use crate::{Client, Node, NodeId};
 use std::net::SocketAddr;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct NodeService<C: Client> {
@@ -128,7 +128,7 @@ impl<C: Client + Clone> NodeService<C> {
         let successor = self.store().successor();
         // let client: C = successor.client().await;
         let client: Arc<C> = self.client(successor).await;
-        
+
         // let client: C = self.store().successor().client();
         client
             .notify(Node {
@@ -152,12 +152,12 @@ impl<C: Client + Clone> NodeService<C> {
         if let Some(predecessor) = self.store().predecessor() {
             let client: Arc<C> = self.client(predecessor).await;
             match client.ping().await {
-                Ok(_) => { Ok(()) }
+                Ok(_) => Ok(()),
                 Err(ClientError::ConnectionFailed(_)) => {
                     self.store().unset_predecessor();
                     Ok(())
                 }
-                Err(e) => Err(e.into())
+                Err(e) => Err(e.into()),
             }
         } else {
             Ok(())
@@ -210,12 +210,12 @@ impl<C: Client + Clone> NodeService<C> {
     }
 
     async fn client(&self, node: Node) -> Arc<C> {
-        // let clients = self.clients;
-        // let client = self.clients.get_or_init(node).await.unwrap();
+        // let clients = self.clients.clone();
+        let client = self.clients.get_or_init(node).await.unwrap();
 
-        // client
-        let client = C::init(node.addr()).await;
-        Arc::new(client)
+        client
+        // let client = C::init(node.addr()).await;
+        // Arc::new(client)
     }
 }
 

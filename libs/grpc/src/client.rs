@@ -5,7 +5,7 @@ use crate::server::chord_proto::chord_node_client::ChordNodeClient;
 use crate::server::chord_proto::{
     self, FindSuccessorRequest, GetFingerTableRequest, GetPredecessorRequest, NotifyRequest,
 };
-use chord_rs::client::{ClientError, ClientStatus};
+use chord_rs::client::ClientError;
 use chord_rs::{Client, Node, NodeId};
 use tonic::async_trait;
 use tonic::transport::{Channel, Endpoint};

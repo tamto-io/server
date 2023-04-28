@@ -3,10 +3,10 @@ mod pool;
 use crate::{Node, NodeId};
 use async_trait::async_trait;
 use mockall::automock;
+pub use pool::ClientsPool;
 use std::fmt::{Display, Formatter};
 use std::net::SocketAddr;
 use tokio::sync::oneshot::error::RecvError;
-pub use pool::ClientsPool;
 
 #[automock]
 #[async_trait]
@@ -68,7 +68,7 @@ impl Display for ClientError {
             }
             ClientError::NotInitialized => write!(f, "Client not initialized"),
             ClientError::Unexpected(message) => write!(f, "{}", message),
-            ClientError::InvalidRequest(message) => write!(f, "Invalid request: {}", message)
+            ClientError::InvalidRequest(message) => write!(f, "Invalid request: {}", message),
         }
     }
 }

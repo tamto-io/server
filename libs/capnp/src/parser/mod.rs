@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
-mod node;
 mod errors;
+mod node;
 pub use node::*;
 
 /// Trait for inserting a value into a Cap'n'proto result builder.
