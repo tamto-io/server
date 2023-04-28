@@ -1,7 +1,6 @@
 use std::{
     net::{IpAddr, SocketAddr},
     sync::Arc,
-    time::Duration,
 };
 
 use chord_proto::chord_node_server::ChordNode;
@@ -14,8 +13,8 @@ use tonic::{Request, Response, Status};
 use crate::client::ChordGrpcClient;
 
 use self::chord_proto::{
-    FindSuccessorRequest, FindSuccessorResponse, GetFingerTableRequest, GetFingerTableResponse,
-    GetPredecessorRequest, GetPredecessorResponse, NotifyRequest, NotifyResponse,
+    FindSuccessorRequest, FindSuccessorResponse, GetPredecessorRequest, GetPredecessorResponse,
+    GetSuccessorResponse, NotifyRequest, NotifyResponse,
 };
 
 pub mod chord_proto {
@@ -45,62 +44,10 @@ impl ChordService {
         let node_service = Arc::new(NodeService::new(addr));
 
         if let Some(ring) = ring {
-            let node_service = node_service.clone();
-            // TODO: make this configurable
-            const WAIT_BETWEEN_RETRIES: Duration = Duration::from_secs(3);
             const MAX_RETRIES: u32 = 5;
-            let mut attempt = 0;
-            loop {
-                attempt += 1;
-                log::info!("{} attempt to join ring: {:?}", attempt, ring);
-
-                let node = Node::new(ring);
-                tokio::time::sleep(Duration::from_secs(1)).await;
-
-                if let Ok(_) = node_service.join(node).await {
-                    log::info!("Joined ring: {:?}", ring);
-                    break;
-                } else {
-                    if attempt >= MAX_RETRIES {
-                        log::error!("Failed to join ring: {:?}", ring);
-                        panic!("Failed to join ring: {:?}", ring)
-                    }
-                }
-
-                tokio::time::sleep(WAIT_BETWEEN_RETRIES).await;
-            }
+            chord_rs::server::join_ring(node_service.clone(), ring, MAX_RETRIES).await;
         }
-
-        let service = node_service.clone();
-        tokio::spawn(async move {
-            loop {
-                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                // log::info!("Stabilizing...");
-                if let Err(err) = service.stabilize().await {
-                    log::error!("Stabilize error: {:?}", err);
-                }
-            }
-        });
-
-        // let service = node_service.clone();
-        // tokio::spawn(async move {
-        //     loop {
-        //         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-        //         println!("Checking predecessor...");
-        //         service.check_predecessor();
-        //     }
-        // });
-
-        let service = node_service.clone();
-        tokio::spawn(async move {
-            // TODO: remove this and make it wait for the node to join the ring before starting fixing fingers
-            // tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-            loop {
-                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                // log::info!("Fixing fingers...");
-                service.fix_fingers().await;
-            }
-        });
+        chord_rs::server::background_tasks(node_service.clone());
 
         Self { node: node_service }
     }
@@ -146,13 +93,20 @@ impl ChordNode for ChordService {
         Ok(Response::new(result.into()))
     }
 
+    async fn get_successor(
+        &self,
+        _request: Request<chord_proto::GetSuccessorRequest>,
+    ) -> Result<Response<chord_proto::GetSuccessorResponse>, Status> {
+        let result = self.node.get_successor().await.map_err(Self::map_error)?;
+
+        Ok(Response::new(result.into()))
+    }
+
     async fn get_predecessor(
         &self,
         _request: Request<GetPredecessorRequest>,
     ) -> Result<Response<GetPredecessorResponse>, Status> {
         let result = self.node.get_predecessor().await.map_err(Self::map_error)?;
-
-        // println!("result: {:?}", result);
 
         Ok(Response::new(result.into()))
     }
@@ -168,20 +122,6 @@ impl ChordNode for ChordService {
 
         Ok(Response::new(NotifyResponse {}))
     }
-
-    async fn get_finger_table(
-        &self,
-        _: Request<GetFingerTableRequest>,
-    ) -> Result<Response<GetFingerTableResponse>, Status> {
-        let finger_table = self.node.finger_table();
-
-        let nodes = finger_table
-            .iter()
-            .map(|finger| finger.node.clone().into())
-            .collect();
-
-        Ok(Response::new(GetFingerTableResponse { nodes }))
-    }
 }
 
 impl From<chord_rs::Node> for FindSuccessorResponse {
@@ -192,19 +132,13 @@ impl From<chord_rs::Node> for FindSuccessorResponse {
     }
 }
 
-// impl Into<chord_rs::Node> for chord_proto::Node {
-//     fn into(self) -> chord_rs::Node {
-//         let ip = self.ip.unwrap();
-//         let ip = match ip.version {
-//             chord_proto::IpVersion::Ipv4 => IpAddr::V4(ip.address.into()),
-//             chord_proto::IpVersion::Ipv6 => IpAddr::V6(ip.address.into()),
-//         };
-
-//         let addr = SocketAddr::new(ip, self.port as u16);
-
-//         chord_rs::Node::new(addr)
-//     }
-// }
+impl From<chord_rs::Node> for GetSuccessorResponse {
+    fn from(node: chord_rs::Node) -> Self {
+        GetSuccessorResponse {
+            node: Some(node.into()),
+        }
+    }
+}
 
 impl From<Option<chord_rs::Node>> for GetPredecessorResponse {
     fn from(node: Option<chord_rs::Node>) -> Self {

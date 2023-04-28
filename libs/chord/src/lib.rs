@@ -1,5 +1,6 @@
 pub mod client;
 mod node;
+pub mod server;
 mod service;
 
 use seahash::hash;
@@ -57,10 +58,6 @@ impl Node {
             id: addr.into(),
             addr,
         }
-    }
-
-    pub async fn client<C: Client>(&self) -> C {
-        C::init(self.addr).await
     }
 
     pub fn addr(&self) -> SocketAddr {

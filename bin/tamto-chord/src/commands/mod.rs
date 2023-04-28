@@ -1,13 +1,15 @@
 use std::{fmt::Display, time::Duration};
 
-use chord_rs::client::ClientError;
-use tamto_grpc::client::ChordGrpcClient;
+use chord_rs::{client::ClientError, Client};
 
 pub(crate) mod lookup;
+pub(crate) mod ping;
 
 #[async_trait::async_trait]
 pub trait CommandExecute {
-    async fn execute(&self, client: ChordGrpcClient) -> Result<CommandResult, Error>;
+    async fn execute<C>(&self, client: C) -> Result<CommandResult, Error>
+    where
+        C: Client + Clone + Send + Sync;
 }
 
 #[derive(Debug)]

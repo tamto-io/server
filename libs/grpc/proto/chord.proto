@@ -4,13 +4,10 @@ package chord;
 
 service ChordNode {
   rpc FindSuccessor (FindSuccessorRequest) returns (FindSuccessorResponse);
+  rpc GetSuccessor (GetSuccessorRequest) returns (GetSuccessorResponse);
   rpc GetPredecessor (GetPredecessorRequest) returns (GetPredecessorResponse);
   rpc Notify (NotifyRequest) returns (NotifyResponse);
   rpc Ping (PingRequest) returns (PingResponse);
-
-  // Inspection methods
-  // TODO: It should be moved to a separate service 
-  rpc GetFingerTable (GetFingerTableRequest) returns (GetFingerTableResponse);
 }
 
 enum IpVersion {
@@ -37,6 +34,13 @@ message FindSuccessorResponse {
   Node node = 2;
 }
 
+message GetSuccessorRequest {
+}
+
+message GetSuccessorResponse {
+  Node node = 1;
+}
+
 message GetPredecessorRequest {
 }
 
@@ -55,11 +59,4 @@ message PingRequest {
 }
 
 message PingResponse {
-}
-
-message GetFingerTableRequest {
-}
-
-message GetFingerTableResponse {
-  repeated Node nodes = 1;
 }

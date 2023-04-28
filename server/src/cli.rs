@@ -16,6 +16,11 @@ pub(crate) struct Cli {
     /// Set the log level
     #[arg(short('L'), long, value_name = "LEVEL", value_enum, default_value_t = LogLevel::Info)]
     pub(crate) log_level: LogLevel,
+
+    /// Set the maximum number of concurrent connections
+    /// (default: 1024)
+    #[arg(long, value_name = "CONNECTIONS", default_value = "1024")]
+    pub(crate) max_connections: usize,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]

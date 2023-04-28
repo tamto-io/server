@@ -1,16 +1,17 @@
-use crate::client::ClientError;
+use crate::client::{ClientError, ClientsPool};
 use crate::node::store::{Db, NodeStore};
 use crate::node::Finger;
 use crate::{Client, Node, NodeId};
-use std::marker::PhantomData;
 use std::net::SocketAddr;
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct NodeService<C: Client> {
     id: NodeId,
     addr: SocketAddr,
     store: NodeStore,
-    phantom: PhantomData<C>,
+
+    clients: ClientsPool<C>,
 }
 
 impl<C: Client + Clone> NodeService<C> {
@@ -25,7 +26,7 @@ impl<C: Client + Clone> NodeService<C> {
             id,
             addr,
             store,
-            phantom: PhantomData,
+            clients: ClientsPool::new(),
         }
     }
 
@@ -51,7 +52,7 @@ impl<C: Client + Clone> NodeService<C> {
             Ok(successor.clone())
         } else {
             let n = self.closest_preceding_node(id);
-            let client: C = n.client().await;
+            let client: Arc<C> = self.client(n).await;
             let successor = client.find_successor(id).await?;
             Ok(successor)
         }
@@ -59,6 +60,10 @@ impl<C: Client + Clone> NodeService<C> {
 
     pub async fn get_predecessor(&self) -> Result<Option<Node>, error::ServiceError> {
         Ok(self.store().predecessor())
+    }
+
+    pub async fn get_successor(&self) -> Result<Node, error::ServiceError> {
+        Ok(self.store().successor().clone())
     }
 
     /// Join the chord ring.
@@ -70,7 +75,7 @@ impl<C: Client + Clone> NodeService<C> {
     ///
     /// * `node` - The node to join the ring with. It's an existing node in the ring.
     pub async fn join(&self, node: Node) -> Result<(), error::ServiceError> {
-        let client: C = node.client().await;
+        let client: Arc<C> = self.client(node).await;
         let successor = client.find_successor(self.id).await?;
         self.store().set_successor(successor);
 
@@ -110,9 +115,10 @@ impl<C: Client + Clone> NodeService<C> {
     /// > This method should be called periodically.
     pub async fn stabilize(&self) -> Result<(), error::ServiceError> {
         let successor = self.store().successor();
-        let client: C = successor.client().await;
-        // let client: C = self.store().successor().client();
+        let client: Arc<C> = self.client(successor).await;
         let result = client.predecessor().await;
+        drop(client);
+
         if let Ok(Some(x)) = result {
             if Node::is_between_on_ring(x.id.clone().0, self.id.0, self.store().successor().id.0) {
                 self.store().set_successor(x);
@@ -120,8 +126,8 @@ impl<C: Client + Clone> NodeService<C> {
         }
 
         let successor = self.store().successor();
-        let client: C = successor.client().await;
-        // let client: C = self.store().successor().client();
+        let client: Arc<C> = self.client(successor).await;
+
         client
             .notify(Node {
                 id: self.id,
@@ -140,13 +146,19 @@ impl<C: Client + Clone> NodeService<C> {
     /// > **Note**
     /// >
     /// > This method should be called periodically.
-    pub async fn check_predecessor(&self) {
+    pub async fn check_predecessor(&self) -> Result<(), error::ServiceError> {
         if let Some(predecessor) = self.store().predecessor() {
-            let client: C = predecessor.client().await;
-            // let client: C = predecessor.client();
-            if let Err(ClientError::ConnectionFailed(_)) = client.ping().await {
-                self.store().unset_predecessor();
-            };
+            let client: Arc<C> = self.client(predecessor).await;
+            match client.ping().await {
+                Ok(_) => Ok(()),
+                Err(ClientError::ConnectionFailed(_)) => {
+                    self.store().unset_predecessor();
+                    Ok(())
+                }
+                Err(e) => Err(e.into()),
+            }
+        } else {
+            Ok(())
         }
     }
 
@@ -193,6 +205,10 @@ impl<C: Client + Clone> NodeService<C> {
         self.store()
             .closest_preceding_node(self.id.0, id.0)
             .unwrap_or(Node::new(self.addr))
+    }
+
+    async fn client(&self, node: Node) -> Arc<C> {
+        self.clients.get_or_init(node).await
     }
 }
 

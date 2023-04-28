@@ -1,8 +1,12 @@
+mod pool;
+
 use crate::{Node, NodeId};
 use async_trait::async_trait;
 use mockall::automock;
+pub use pool::ClientsPool;
 use std::fmt::{Display, Formatter};
 use std::net::SocketAddr;
+use tokio::sync::oneshot::error::RecvError;
 
 #[automock]
 #[async_trait]
@@ -13,9 +17,6 @@ pub trait Client {
     ///
     /// * `addr` - The node address to connect to
     async fn init(addr: SocketAddr) -> Self;
-
-    /// Get the status of the client
-    fn status(&self) -> ClientStatus;
 
     /// Find a successor of a given id.
     ///
@@ -37,13 +38,6 @@ pub trait Client {
     /// * `predecessor` - The new predecessor
     async fn notify(&self, predecessor: Node) -> Result<(), ClientError>;
 
-    /// Get the finger table of the node
-    ///
-    /// # Returns
-    ///
-    /// A vector of nodes
-    async fn get_finger_table(&self) -> Result<Vec<Node>, ClientError>;
-
     /// Ping the node
     async fn ping(&self) -> Result<(), ClientError>;
 }
@@ -51,6 +45,7 @@ pub trait Client {
 #[derive(Debug)]
 pub enum ClientError {
     ConnectionFailed(Node),
+    InvalidRequest(String),
     NotInitialized,
     Unexpected(String),
 }
@@ -63,12 +58,14 @@ impl Display for ClientError {
             }
             ClientError::NotInitialized => write!(f, "Client not initialized"),
             ClientError::Unexpected(message) => write!(f, "{}", message),
+            ClientError::InvalidRequest(message) => write!(f, "Invalid request: {}", message),
         }
     }
 }
 
-pub enum ClientStatus {
-    NotConnected,
-    Connected,
-    Disconnected,
+impl From<RecvError> for ClientError {
+    fn from(value: RecvError) -> Self {
+        log::error!("Error while receiving command result: {}", value);
+        ClientError::Unexpected("Error while receiving command result".to_string())
+    }
 }
