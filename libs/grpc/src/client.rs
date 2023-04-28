@@ -90,9 +90,7 @@ impl Client for ChordGrpcClient {
             let node: Node = node.try_into().unwrap();
             Ok(node)
         } else {
-            Err(ClientError::Unexpected(
-                "No successor found".to_string(),
-            ))
+            Err(ClientError::Unexpected("No successor found".to_string()))
         }
     }
 

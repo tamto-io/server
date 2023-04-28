@@ -71,7 +71,7 @@ impl LocalSpawner {
             }
             super::command::Command::Successor(resp) => {
                 super::Command::get_successor(client, resp).await
-            },
+            }
         }
 
         if let Err(err) = disconnector.await {

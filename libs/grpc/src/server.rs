@@ -13,8 +13,8 @@ use tonic::{Request, Response, Status};
 use crate::client::ChordGrpcClient;
 
 use self::chord_proto::{
-    FindSuccessorRequest, FindSuccessorResponse,
-    GetPredecessorRequest, GetPredecessorResponse, NotifyRequest, NotifyResponse, GetSuccessorResponse,
+    FindSuccessorRequest, FindSuccessorResponse, GetPredecessorRequest, GetPredecessorResponse,
+    GetSuccessorResponse, NotifyRequest, NotifyResponse,
 };
 
 pub mod chord_proto {

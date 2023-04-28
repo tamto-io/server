@@ -19,9 +19,9 @@ impl<C: Client> ClientsPool<C> {
 
     /// Get the client for the given node.
     /// If the client is not yet initialized, it will be initialized.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `node` - The node to get the client for
     pub async fn get_or_init(&self, node: Node) -> Arc<C> {
         let client = {

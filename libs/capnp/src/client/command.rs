@@ -1,7 +1,8 @@
 use chord_rs::{Node, NodeId};
+use futures::Future;
 
 use crate::{
-    chord_capnp,
+    chord_capnp::{self, chord_node::Client},
     client::CapnpClientError,
     parser::{ParserError, ResultBuilder},
 };
@@ -18,69 +19,46 @@ pub(crate) enum Command {
 }
 
 impl Command {
-    pub(crate) async fn ping(client: chord_capnp::chord_node::Client, sender: CmdResult<()>) {
-        let request = client.ping_request();
+    pub(crate) async fn ping(client: Client, sender: CmdResult<()>) {
+        handle_request(sender, || async {
+            let request = client.ping_request();
 
-        let _ = request.send().promise.await;
-
-        sender.send(Ok(())).unwrap();
+            request.send().promise.await?;
+            Ok(())
+        })
+        .await
     }
 
-    pub(crate) async fn find_successor(
-        client: chord_capnp::chord_node::Client,
-        id: NodeId,
-        sender: CmdResult<Node>,
-    ) {
-        let mut request = client.find_successor_request();
-        request.get().set_id(id.into());
+    pub(crate) async fn find_successor(client: Client, id: NodeId, sender: CmdResult<Node>) {
+        handle_request(sender, || async {
+            let mut request = client.find_successor_request();
+            request.get().set_id(id.into());
 
-        let reply = request.send().promise.await.unwrap(); // TODO: Handle error
-        let node = reply
-            .get()
-            .unwrap()
-            .get_node()
-            .unwrap()
-            .try_into()
-            .map_err(|err: ParserError| err.into());
+            let reply = request.send().promise.await?;
+            let node = reply.get()?.get_node()?.try_into()?;
 
-        sender.send(node).unwrap();
+            Ok(node)
+        })
+        .await
     }
 
-    pub(crate) async fn get_successor(
-        client: chord_capnp::chord_node::Client,
-        sender: CmdResult<Node>,
-    ) {
-        async fn get_successor_impl(
-            client: chord_capnp::chord_node::Client,
-        ) -> Result<Node, CapnpClientError> {
+    pub(crate) async fn get_successor(client: Client, sender: CmdResult<Node>) {
+        handle_request(sender, || async {
             let request = client.get_successor_request();
 
             let reply = request.send().promise.await?;
-            reply
-                .get()
-                .unwrap()
-                .get_node()
-                .unwrap()
-                .try_into()
-                .map_err(|err: ParserError| err.into())
-        }
-
-        let node = get_successor_impl(client).await;
-
-        sender.send(node).unwrap();
+            let successor = reply.get()?.get_node()?.try_into()?;
+            Ok(successor)
+        })
+        .await;
     }
 
-    pub(crate) async fn get_predecessor(
-        client: chord_capnp::chord_node::Client,
-        sender: CmdResult<Option<Node>>,
-    ) {
-        async fn get_predecessor_impl(
-            client: chord_capnp::chord_node::Client,
-        ) -> Result<Option<Node>, CapnpClientError> {
+    pub(crate) async fn get_predecessor(client: Client, sender: CmdResult<Option<Node>>) {
+        handle_request(sender, || async {
             let request = client.get_predecessor_request();
 
             let reply = request.send().promise.await?;
-            let node = reply.get().unwrap().get_node().unwrap();
+            let node = reply.get()?.get_node()?;
             match node.which() {
                 Ok(chord_capnp::option::None(())) => Ok(None),
                 Ok(chord_capnp::option::Some(Ok(reader))) => {
@@ -91,46 +69,29 @@ impl Command {
                 Ok(chord_capnp::option::Some(Err(err))) => Err(err.into()),
                 Err(err) => Err(err.into()),
             }
-        }
-
-        let node = get_predecessor_impl(client).await;
-
-        sender.send(node).unwrap();
+        })
+        .await
     }
 
-    pub(crate) async fn notify(
-        client: chord_capnp::chord_node::Client,
-        predecessor: Node,
-        sender: CmdResult<()>,
-    ) {
-        async fn notify_impl(
-            client: chord_capnp::chord_node::Client,
-            predecessor: Node,
-        ) -> Result<(), CapnpClientError> {
+    pub(crate) async fn notify(client: Client, predecessor: Node, sender: CmdResult<()>) {
+        handle_request(sender, || async {
             let mut request = client.notify_request();
             let node = request.get().init_node();
             node.insert(predecessor)?;
 
             let _ = request.send().promise.await;
             Ok(())
-        }
-
-        let result = notify_impl(client, predecessor).await;
-
-        sender.send(result).unwrap();
+        })
+        .await;
     }
+}
 
-    // pub(crate) async fn get_finger_table(
-    //     client: chord_capnp::chord_node::Client,
-    //     sender: CmdResult<Vec<Node>>,
-    // ) {
-    //     let request = client.get_finger_table_request();
+async fn handle_request<F, Res>(sender: CmdResult<Res>, f: impl FnOnce() -> F)
+where
+    F: Future<Output = Result<Res, CapnpClientError>>,
+    Res: std::fmt::Debug,
+{
+    let result = f().await;
 
-    //     let reply = request.send().promise.await.unwrap(); // TODO: Handle error
-    //     let table = reply.get().unwrap().get_table().unwrap();
-    //     let table = table.iter().map(|node| node.unwrap().try_into()).collect::<Result<Vec<Node>, ParserError>>()
-    //         .map_err(|err: ParserError| err.into());
-
-    //     sender.send(table).unwrap();
-    // }
+    sender.send(result).unwrap();
 }
