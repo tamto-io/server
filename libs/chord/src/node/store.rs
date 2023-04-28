@@ -24,6 +24,10 @@ struct Shared {
 struct State {
     predecessor: Option<Node>,
     finger_table: Vec<Finger>,
+    /// The list of immediate successors
+    /// This list is used to keep track of some of the successors of the node.
+    /// It's needed in case the most immediate successor fails.
+    successor_list: Vec<Node>,
 }
 
 impl NodeStore {
@@ -32,9 +36,10 @@ impl NodeStore {
     /// # Arguments
     ///
     /// * `successor` - The immediate successor of the current node
-    pub(crate) fn new(successor: Node) -> Self {
+    /// * `resiliance_factor` - The number of successors to keep track of
+    pub(crate) fn new(successor: Node, resiliance_factor: usize) -> Self {
         Self {
-            db: Db::new(successor),
+            db: Db::new(successor, resiliance_factor),
         }
     }
 
@@ -46,11 +51,18 @@ impl NodeStore {
 }
 
 impl Db {
-    pub(crate) fn new(node: Node) -> Db {
+    /// Create a new database
+    /// 
+    /// # Arguments
+    /// 
+    /// * `node` - The immediate successor of the current node
+    /// * `resiliance_factor` - The number of successors to keep track of
+    pub(crate) fn new(node: Node, resiliance_factor: usize) -> Db {
         let shared = Arc::new(Shared {
             state: Mutex::new(State {
                 predecessor: None,
                 finger_table: Finger::init_finger_table(node),
+                successor_list: Vec::with_capacity(resiliance_factor),
             }),
             // background_task: Notify::new(),
         });
@@ -165,7 +177,7 @@ mod tests {
     #[test]
     fn test_new() {
         let node = Node::with_id(NodeId(1), SocketAddr::from(([127, 0, 0, 1], 42001)));
-        let store = NodeStore::new(node.clone());
+        let store = NodeStore::new(node.clone(), 3);
         let store = store.db();
 
         assert_eq!(store.successor(), node);
@@ -175,7 +187,7 @@ mod tests {
     #[test]
     fn test_predecessor() {
         let node = Node::with_id(NodeId(1), SocketAddr::from(([127, 0, 0, 1], 42001)));
-        let store = NodeStore::new(node.clone());
+        let store = NodeStore::new(node.clone(), 3);
         let predecessor = Node::with_id(NodeId(2), SocketAddr::from(([127, 0, 0, 1], 42002)));
         assert_eq!(store.db().predecessor(), None);
         store.db().set_predecessor(predecessor.clone());
@@ -189,7 +201,7 @@ mod tests {
     #[test]
     fn test_successor() {
         let node = Node::with_id(NodeId(1), SocketAddr::from(([127, 0, 0, 1], 42001)));
-        let store = NodeStore::new(node.clone());
+        let store = NodeStore::new(node.clone(), 3);
         let successor = Node::with_id(NodeId(2), SocketAddr::from(([127, 0, 0, 1], 42002)));
         assert_eq!(store.db().successor(), node);
         store.db().set_successor(successor.clone());
@@ -200,7 +212,7 @@ mod tests {
     #[test]
     fn test_closest_preceding_node() {
         let node = Node::with_id(NodeId(10), SocketAddr::from(([127, 0, 0, 1], 42001)));
-        let store = NodeStore::new(node.clone());
+        let store = NodeStore::new(node.clone(), 3);
         let successor = Node::with_id(NodeId(20), SocketAddr::from(([127, 0, 0, 1], 42002)));
         let predecessor = Node::with_id(NodeId(1), SocketAddr::from(([127, 0, 0, 1], 42003)));
         store.db().set_predecessor(predecessor.clone());

@@ -15,13 +15,20 @@ pub struct NodeService<C: Client> {
 }
 
 impl<C: Client + Clone> NodeService<C> {
-    pub fn new(socket_addr: SocketAddr) -> Self {
+
+    /// Create a new node service
+    /// 
+    /// # Arguments
+    /// 
+    /// * `socket_addr` - The address of the node
+    /// * `resiliance_factor` - The number of successors to keep track of
+    pub fn new(socket_addr: SocketAddr, resiliance_factor: usize) -> Self {
         let id = socket_addr.into();
-        Self::with_id(id, socket_addr)
+        Self::with_id(id, socket_addr, resiliance_factor)
     }
 
-    fn with_id(id: NodeId, addr: SocketAddr) -> Self {
-        let store = NodeStore::new(Node::with_id(id, addr));
+    fn with_id(id: NodeId, addr: SocketAddr, resiliance_factor: usize) -> Self {
+        let store = NodeStore::new(Node::with_id(id, addr), resiliance_factor);
         Self {
             id,
             addr,
