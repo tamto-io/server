@@ -17,14 +17,20 @@ impl<C: Client> ClientsPool<C> {
         }
     }
 
-    pub async fn get_or_init(&self, node: Node) -> Result<Arc<C>, ClientsPoolError> {
+    /// Get the client for the given node.
+    /// If the client is not yet initialized, it will be initialized.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `node` - The node to get the client for
+    pub async fn get_or_init(&self, node: Node) -> Arc<C> {
         let client = {
             let state = self.clients.lock().unwrap();
             state.get(&node.id()).map(|c| c.clone())
         };
 
         match client {
-            Some(c) => Ok(c),
+            Some(c) => c,
             None => {
                 log::debug!("Initializing client for node: {}", node.addr());
                 let client = C::init(node.addr()).await;
@@ -33,15 +39,10 @@ impl<C: Client> ClientsPool<C> {
                     let mut state = self.clients.lock().unwrap();
                     state.insert(node.id(), client.clone());
                 }
-                Ok(client)
+                client
             }
         }
     }
-}
-
-#[derive(Debug)]
-pub enum ClientsPoolError {
-    ClientNotFound,
 }
 
 #[cfg(test)]
@@ -86,14 +87,14 @@ mod tests {
             assert!(clients.is_empty());
         }
 
-        pool.get_or_init(node.clone()).await.unwrap();
+        pool.get_or_init(node.clone()).await;
         {
             let clients = pool.clients.lock().unwrap();
             assert_eq!(clients.len(), 1);
             assert!(clients.contains_key(&node.id()));
         }
 
-        pool.get_or_init(node.clone()).await.unwrap();
+        pool.get_or_init(node.clone()).await;
         {
             let clients = pool.clients.lock().unwrap();
             assert_eq!(clients.len(), 1);

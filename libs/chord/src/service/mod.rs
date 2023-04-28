@@ -210,12 +210,7 @@ impl<C: Client + Clone> NodeService<C> {
     }
 
     async fn client(&self, node: Node) -> Arc<C> {
-        // let clients = self.clients.clone();
-        let client = self.clients.get_or_init(node).await.unwrap();
-
-        client
-        // let client = C::init(node.addr()).await;
-        // Arc::new(client)
+        self.clients.get_or_init(node).await
     }
 }
 

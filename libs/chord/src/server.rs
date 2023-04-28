@@ -43,9 +43,9 @@ pub fn background_tasks<T: Client + Clone + Sync + Send + 'static>(
                 log::error!("Stabilize error: {:?}", err);
             }
 
-            // if let Err(err) = service.check_predecessor().await {
-            //     log::error!("Check predecessor error: {:?}", err);
-            // }
+            if let Err(err) = service.check_predecessor().await {
+                log::error!("Check predecessor error: {:?}", err);
+            }
 
             service.fix_fingers().await;
         }
