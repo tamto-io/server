@@ -20,7 +20,7 @@ pub(crate) enum Command {
 
 impl Command {
     pub(crate) async fn ping(client: Client, sender: CmdResult<()>) {
-        handle_request(sender, || async {
+        Self::handle_request(sender, || async {
             let request = client.ping_request();
 
             request.send().promise.await?;
@@ -30,7 +30,7 @@ impl Command {
     }
 
     pub(crate) async fn find_successor(client: Client, id: NodeId, sender: CmdResult<Node>) {
-        handle_request(sender, || async {
+        Self::handle_request(sender, || async {
             let mut request = client.find_successor_request();
             request.get().set_id(id.into());
 
@@ -43,7 +43,7 @@ impl Command {
     }
 
     pub(crate) async fn get_successor(client: Client, sender: CmdResult<Node>) {
-        handle_request(sender, || async {
+        Self::handle_request(sender, || async {
             let request = client.get_successor_request();
 
             let reply = request.send().promise.await?;
@@ -54,7 +54,7 @@ impl Command {
     }
 
     pub(crate) async fn get_predecessor(client: Client, sender: CmdResult<Option<Node>>) {
-        handle_request(sender, || async {
+        Self::handle_request(sender, || async {
             let request = client.get_predecessor_request();
 
             let reply = request.send().promise.await?;
@@ -74,7 +74,7 @@ impl Command {
     }
 
     pub(crate) async fn notify(client: Client, predecessor: Node, sender: CmdResult<()>) {
-        handle_request(sender, || async {
+        Self::handle_request(sender, || async {
             let mut request = client.notify_request();
             let node = request.get().init_node();
             node.insert(predecessor)?;
@@ -84,14 +84,14 @@ impl Command {
         })
         .await;
     }
-}
 
-async fn handle_request<F, Res>(sender: CmdResult<Res>, f: impl FnOnce() -> F)
-where
-    F: Future<Output = Result<Res, CapnpClientError>>,
-    Res: std::fmt::Debug,
-{
-    let result = f().await;
+    async fn handle_request<F, Res>(sender: CmdResult<Res>, f: impl FnOnce() -> F)
+    where
+        F: Future<Output = Result<Res, CapnpClientError>>,
+        Res: std::fmt::Debug,
+    {
+        let result = f().await;
 
-    sender.send(result).unwrap();
+        sender.send(result).unwrap();
+    }
 }
