@@ -18,9 +18,6 @@ pub trait Client {
     /// * `addr` - The node address to connect to
     async fn init(addr: SocketAddr) -> Self;
 
-    /// Get the status of the client
-    // fn status(&self) -> ClientStatus;
-
     /// Find a successor of a given id.
     ///
     /// # Arguments
@@ -71,23 +68,4 @@ impl From<RecvError> for ClientError {
         log::error!("Error while receiving command result: {}", value);
         ClientError::Unexpected("Error while receiving command result".to_string())
     }
-}
-
-// impl <T> From<T> for ClientError
-// where
-//     T: IntoClientError,
-// {
-//     fn from(value: T) -> Self {
-//         value.into()
-//     }
-// }
-
-// pub trait IntoClientError {
-//     fn into(self) -> ClientError;
-// }
-
-pub enum ClientStatus {
-    NotConnected,
-    Connected,
-    Disconnected,
 }

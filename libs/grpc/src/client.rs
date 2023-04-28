@@ -54,14 +54,6 @@ impl Client for ChordGrpcClient {
         }
     }
 
-    // fn status(&self) -> ClientStatus {
-    //     if self.client.client.lock().unwrap().is_some() {
-    //         ClientStatus::Connected
-    //     } else {
-    //         ClientStatus::Disconnected
-    //     }
-    // }
-
     async fn find_successor(&self, id: NodeId) -> Result<Node, ClientError> {
         let mut client = self.client()?;
 

@@ -52,7 +52,6 @@ impl<C: Client + Clone> NodeService<C> {
             Ok(successor.clone())
         } else {
             let n = self.closest_preceding_node(id);
-            // let client: C = n.client().await;
             let client: Arc<C> = self.client(n).await;
             let successor = client.find_successor(id).await?;
             Ok(successor)
@@ -76,7 +75,6 @@ impl<C: Client + Clone> NodeService<C> {
     ///
     /// * `node` - The node to join the ring with. It's an existing node in the ring.
     pub async fn join(&self, node: Node) -> Result<(), error::ServiceError> {
-        // let client: C = node.client().await;
         let client: Arc<C> = self.client(node).await;
         let successor = client.find_successor(self.id).await?;
         self.store().set_successor(successor);
@@ -117,9 +115,7 @@ impl<C: Client + Clone> NodeService<C> {
     /// > This method should be called periodically.
     pub async fn stabilize(&self) -> Result<(), error::ServiceError> {
         let successor = self.store().successor();
-        // let client: C = successor.client().await;
         let client: Arc<C> = self.client(successor).await;
-        // let client: C = self.store().successor().client();
         let result = client.predecessor().await;
         drop(client);
 
@@ -130,10 +126,8 @@ impl<C: Client + Clone> NodeService<C> {
         }
 
         let successor = self.store().successor();
-        // let client: C = successor.client().await;
         let client: Arc<C> = self.client(successor).await;
 
-        // let client: C = self.store().successor().client();
         client
             .notify(Node {
                 id: self.id,
