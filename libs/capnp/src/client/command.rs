@@ -11,9 +11,9 @@ use super::CmdResult;
 #[derive(Debug)]
 pub(crate) enum Command {
     FindSuccessor(NodeId, CmdResult<Node>),
+    Successor(CmdResult<Node>),
     Predecessor(CmdResult<Option<Node>>),
     Notify(Node, CmdResult<()>),
-    GetFingerTable(CmdResult<Vec<Node>>),
     Ping(CmdResult<()>),
 }
 
@@ -42,6 +42,30 @@ impl Command {
             .unwrap()
             .try_into()
             .map_err(|err: ParserError| err.into());
+
+        sender.send(node).unwrap();
+    }
+
+    pub(crate) async fn get_successor(
+        client: chord_capnp::chord_node::Client,
+        sender: CmdResult<Node>,
+    ) {
+        async fn get_successor_impl(
+            client: chord_capnp::chord_node::Client,
+        ) -> Result<Node, CapnpClientError> {
+            let request = client.get_successor_request();
+
+            let reply = request.send().promise.await?;
+            reply
+                .get()
+                .unwrap()
+                .get_node()
+                .unwrap()
+                .try_into()
+                .map_err(|err: ParserError| err.into())
+        }
+
+        let node = get_successor_impl(client).await;
 
         sender.send(node).unwrap();
     }

@@ -24,10 +24,7 @@ interface ChordNode {
 
   ping @0 ();
   findSuccessor @1 (id :UInt64) -> (node :Node);
-  getPredecessor @2 () -> (node :Option(Node));
-  notify @3 (node :Node);
-
-  # Inspection methods
-  # TODO: It should be moved to a separate service 
-  getFingerTable @4 () -> (fingerTable :List(Node));
+  getSuccessor @2 () -> (node :Node);
+  getPredecessor @3 () -> (node :Option(Node));
+  notify @4 (node :Node);
 }

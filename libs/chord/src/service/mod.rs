@@ -63,6 +63,10 @@ impl<C: Client + Clone> NodeService<C> {
         Ok(self.store().predecessor())
     }
 
+    pub async fn get_successor(&self) -> Result<Node, error::ServiceError> {
+        Ok(self.store().successor().clone())
+    }
+
     /// Join the chord ring.
     ///
     /// This method is used to join the chord ring. It will find the successor of its own id

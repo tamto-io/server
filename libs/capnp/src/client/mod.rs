@@ -32,7 +32,11 @@ impl Client for ChordCapnpClient {
     }
 
     async fn successor(&self) -> Result<Node, ClientError> {
-        self.get_finger_table().await.map(|table| table[0].clone())
+        let (tx, rx) = oneshot::channel();
+        self.spawner.spawn(Command::Successor(tx));
+
+        let result = rx.await?;
+        Ok(result?)
     }
 
     async fn predecessor(&self) -> Result<Option<Node>, ClientError> {
@@ -46,14 +50,6 @@ impl Client for ChordCapnpClient {
     async fn notify(&self, predecessor: Node) -> Result<(), ClientError> {
         let (tx, rx) = oneshot::channel();
         self.spawner.spawn(Command::Notify(predecessor, tx));
-
-        let result = rx.await?;
-        Ok(result?)
-    }
-
-    async fn get_finger_table(&self) -> Result<Vec<Node>, ClientError> {
-        let (tx, rx) = oneshot::channel();
-        self.spawner.spawn(Command::GetFingerTable(tx));
 
         let result = rx.await?;
         Ok(result?)

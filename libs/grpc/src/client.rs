@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::server::chord_proto::chord_node_client::ChordNodeClient;
 use crate::server::chord_proto::{
-    self, FindSuccessorRequest, GetFingerTableRequest, GetPredecessorRequest, NotifyRequest,
+    self, FindSuccessorRequest, GetPredecessorRequest, NotifyRequest,
 };
 use chord_rs::client::ClientError;
 use chord_rs::{Client, Node, NodeId};
@@ -80,7 +80,20 @@ impl Client for ChordGrpcClient {
     }
 
     async fn successor(&self) -> Result<Node, ClientError> {
-        self.get_finger_table().await.map(|table| table[0].clone())
+        let mut client = self.client()?;
+
+        let request = tonic::Request::new(chord_proto::GetSuccessorRequest {});
+
+        let response = client.get_successor(request).await.unwrap().into_inner();
+
+        if let Some(node) = response.node {
+            let node: Node = node.try_into().unwrap();
+            Ok(node)
+        } else {
+            Err(ClientError::Unexpected(
+                "No successor found".to_string(),
+            ))
+        }
     }
 
     async fn predecessor(&self) -> Result<Option<Node>, ClientError> {
@@ -107,23 +120,6 @@ impl Client for ChordGrpcClient {
         client.notify(request).await.unwrap();
 
         Ok(())
-    }
-
-    async fn get_finger_table(&self) -> Result<Vec<Node>, ClientError> {
-        let mut client = self.client()?;
-
-        let request = tonic::Request::new(GetFingerTableRequest {});
-        let response = client.get_finger_table(request).await.unwrap();
-
-        let response = response.into_inner();
-
-        let nodes = response
-            .nodes
-            .into_iter()
-            .map(|node| node.try_into().unwrap())
-            .collect();
-
-        Ok(nodes)
     }
 
     async fn ping(&self) -> Result<(), ClientError> {

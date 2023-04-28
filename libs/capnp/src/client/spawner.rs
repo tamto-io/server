@@ -69,7 +69,9 @@ impl LocalSpawner {
             super::command::Command::Notify(node, resp) => {
                 super::Command::notify(client, node, resp).await
             }
-            super::command::Command::GetFingerTable(_) => todo!(),
+            super::command::Command::Successor(resp) => {
+                super::Command::get_successor(client, resp).await
+            },
         }
 
         if let Err(err) = disconnector.await {

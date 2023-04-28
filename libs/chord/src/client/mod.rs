@@ -41,13 +41,6 @@ pub trait Client {
     /// * `predecessor` - The new predecessor
     async fn notify(&self, predecessor: Node) -> Result<(), ClientError>;
 
-    /// Get the finger table of the node
-    ///
-    /// # Returns
-    ///
-    /// A vector of nodes
-    async fn get_finger_table(&self) -> Result<Vec<Node>, ClientError>;
-
     /// Ping the node
     async fn ping(&self) -> Result<(), ClientError>;
 }
