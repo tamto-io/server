@@ -1,7 +1,7 @@
 use crate::client::{ClientError, MockClient};
 use crate::service::tests;
 use crate::service::tests::{get_lock, MTX};
-use crate::{NodeService, NodeId};
+use crate::{NodeId, NodeService};
 use std::net::SocketAddr;
 
 #[tokio::test]

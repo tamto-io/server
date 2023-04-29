@@ -39,7 +39,9 @@ impl LocalSpawner {
             .expect("Thread with LocalSet has shut down.");
     }
 
-    async fn rpc_system(addr: SocketAddr) -> Result<RpcSystem<rpc_twoparty_capnp::Side>, SpawnerError> {
+    async fn rpc_system(
+        addr: SocketAddr,
+    ) -> Result<RpcSystem<rpc_twoparty_capnp::Side>, SpawnerError> {
         let stream = tokio::net::TcpStream::connect(&addr).await?;
         stream.set_nodelay(true)?;
         let (reader, writer) = tokio_util::compat::TokioAsyncReadCompatExt::compat(stream).split();

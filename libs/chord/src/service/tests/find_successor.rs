@@ -1,7 +1,7 @@
 use crate::client::MockClient;
 use crate::service::tests;
 use crate::service::tests::{get_lock, MTX};
-use crate::{NodeService, NodeId};
+use crate::{NodeId, NodeService};
 use std::net::SocketAddr;
 
 #[tokio::test]
@@ -34,8 +34,14 @@ async fn find_successor_with_2_nodes() {
         NodeService::with_id(8, SocketAddr::from(([127, 0, 0, 1], 42001)), 3);
     service.store.db().set_successor(tests::node(16));
 
-    assert_eq!(service.find_successor(NodeId(10)).await.unwrap().id, NodeId(16));
-    assert_eq!(service.find_successor(NodeId(2)).await.unwrap().id, NodeId(6));
+    assert_eq!(
+        service.find_successor(NodeId(10)).await.unwrap().id,
+        NodeId(16)
+    );
+    assert_eq!(
+        service.find_successor(NodeId(2)).await.unwrap().id,
+        NodeId(6)
+    );
 }
 
 #[tokio::test]
@@ -58,8 +64,14 @@ async fn find_successor_with_2_nodes_but_the_same_id() {
         NodeService::with_id(6, SocketAddr::from(([127, 0, 0, 1], 42001)), 3);
     service.store.db().set_successor(tests::node(6));
 
-    assert_eq!(service.find_successor(NodeId(6)).await.unwrap().id, NodeId(6));
-    assert_eq!(service.find_successor(NodeId(6)).await.unwrap().id, NodeId(6));
+    assert_eq!(
+        service.find_successor(NodeId(6)).await.unwrap().id,
+        NodeId(6)
+    );
+    assert_eq!(
+        service.find_successor(NodeId(6)).await.unwrap().id,
+        NodeId(6)
+    );
 }
 
 #[tokio::test]
@@ -89,8 +101,14 @@ async fn find_successor_using_finger_table_nodes() {
     let mut service: NodeService<MockClient> = NodeService::default();
     service.with_fingers(vec![1, 10, 35, 129]);
 
-    assert_eq!(service.find_successor(NodeId(40)).await.unwrap().id, NodeId(111));
-    assert_eq!(service.find_successor(NodeId(2)).await.unwrap().id, NodeId(5));
+    assert_eq!(
+        service.find_successor(NodeId(40)).await.unwrap().id,
+        NodeId(111)
+    );
+    assert_eq!(
+        service.find_successor(NodeId(2)).await.unwrap().id,
+        NodeId(5)
+    );
 }
 
 #[tokio::test]

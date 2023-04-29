@@ -65,7 +65,10 @@ impl Node {
     }
 
     pub fn with_id(id: impl Into<NodeId>, addr: SocketAddr) -> Self {
-        Self { id: id.into(), addr }
+        Self {
+            id: id.into(),
+            addr,
+        }
     }
 
     pub fn id(&self) -> NodeId {

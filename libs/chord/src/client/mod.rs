@@ -28,6 +28,9 @@ pub trait Client {
     /// Get the successor of the node
     async fn successor(&self) -> Result<Node, ClientError>;
 
+    /// Get successor list of the node
+    async fn successor_list(&self) -> Result<Vec<Node>, ClientError>;
+
     /// Get the predecessor of the node
     async fn predecessor(&self) -> Result<Option<Node>, ClientError>;
 

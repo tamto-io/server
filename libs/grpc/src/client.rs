@@ -86,6 +86,10 @@ impl Client for ChordGrpcClient {
         }
     }
 
+    async fn successor_list(&self) -> Result<Vec<Node>, ClientError> {
+        todo!("successor_list")
+    }
+
     async fn predecessor(&self) -> Result<Option<Node>, ClientError> {
         let mut client = self.client()?;
 

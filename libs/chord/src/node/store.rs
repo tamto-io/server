@@ -52,9 +52,9 @@ impl NodeStore {
 
 impl Db {
     /// Create a new database
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `node` - The immediate successor of the current node
     /// * `replication_factor` - The number of successors to keep track of
     pub(crate) fn new(node: Node, replication_factor: usize) -> Db {
@@ -111,7 +111,7 @@ impl Db {
         let mut state = self.shared_state();
         // state.finger_table[0].node = successor;
         state.successor_list[0] = successor;
-        
+
         drop(state)
     }
 
@@ -121,6 +121,38 @@ impl Db {
 
         // state.finger_table[0].node.clone()
         state.successor_list[0].clone()
+    }
+
+    /// Set the successor list of the node
+    /// 
+    /// If successor_list contains more items than `replication_factor`, only the first `replication_factor` items are used.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `successor_list` - The list of successors
+    pub(crate) fn set_successor_list(&self, successor_list: Vec<Node>) {
+        let mut state = self.shared_state();
+        let capacity = state.successor_list.capacity();
+        state.successor_list.clear();
+
+        let items = if (successor_list.len() as usize) < capacity {
+            successor_list.len()
+        } else {
+            capacity
+        };
+
+        for i in 0..items {
+            state.successor_list.push(successor_list[i].clone());
+        }
+
+
+        drop(state)
+    }
+
+    /// Get the successor list of the node
+    pub(crate) fn successor_list(&self) -> Vec<Node> {
+        let state = self.shared_state();
+        state.successor_list.clone()
     }
 
     /// Get the closest preceding node
@@ -256,7 +288,14 @@ mod tests {
         let node = Node::with_id(NodeId(10), SocketAddr::from(([127, 0, 0, 1], 42001)));
         let store = NodeStore::new(node.clone(), 3);
 
-        let successors = store.db().shared.state.lock().unwrap().successor_list.clone();
+        let successors = store
+            .db()
+            .shared
+            .state
+            .lock()
+            .unwrap()
+            .successor_list
+            .clone();
         assert_eq!(successors.len(), 1);
         assert_eq!(successors[0], node);
     }

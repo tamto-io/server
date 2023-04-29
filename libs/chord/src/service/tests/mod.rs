@@ -1,5 +1,5 @@
-use crate::client::{MockClient, ClientsPool};
-use crate::{Node, NodeService, NodeId};
+use crate::client::{ClientsPool, MockClient};
+use crate::{Node, NodeId, NodeService};
 use std::net::SocketAddr;
 
 mod check_predecessor;
@@ -7,6 +7,7 @@ mod find_successor;
 mod fix_fingers;
 mod join;
 mod notify;
+mod reconcile_successors;
 mod stabilize;
 
 use crate::node::store::NodeStore;
@@ -50,6 +51,17 @@ impl Default for NodeService<MockClient> {
 }
 
 impl NodeService<MockClient> {
+    fn test_service(id: u64) -> Self {
+        let node = Node::with_id(id, SocketAddr::from(([127, 0, 0, 1], 42000 + id as u16)));
+        let store = NodeStore::new(node.clone(), 3);
+        Self {
+            id: node.id,
+            addr: node.addr,
+            store,
+            clients: ClientsPool::default(),
+        }
+    }
+
     fn find_closest_successor(id: NodeId, nodes: &Vec<Node>) -> Node {
         let mut nodes = nodes.clone();
         nodes.sort_by(|b, a| a.id.cmp(&b.id));
@@ -95,7 +107,12 @@ impl NodeService<MockClient> {
     // }
 
     pub(crate) fn collect_finger_node_ids(&self) -> Vec<u64> {
-        self.store.db().finger_table().iter().map(|f| f.node.id.0).collect()
+        self.store
+            .db()
+            .finger_table()
+            .iter()
+            .map(|f| f.node.id.0)
+            .collect()
     }
 }
 

@@ -10,7 +10,7 @@ pub struct ClientsPool<C: Client> {
     clients: Arc<Mutex<HashMap<NodeId, Arc<C>>>>,
 }
 
-impl <C: Client> Default for ClientsPool<C> {
+impl<C: Client> Default for ClientsPool<C> {
     fn default() -> Self {
         Self {
             clients: Arc::new(Mutex::new(HashMap::new())),
@@ -51,16 +51,15 @@ impl<C: Client> ClientsPool<C> {
 mod tests {
     use super::*;
     use crate::service::tests::MTX;
-    use crate::{client::MockClient, service::tests::get_lock};
     use crate::Node;
+    use crate::{client::MockClient, service::tests::get_lock};
 
     #[tokio::test]
     async fn test_getting_client() {
         let _m = get_lock(&MTX);
         let ctx = MockClient::init_context();
 
-        ctx.expect()
-            .returning(|_| MockClient::new());
+        ctx.expect().returning(|_| MockClient::new());
 
         let node = Node::new("[::1]:42080".parse().unwrap());
 

@@ -4,6 +4,7 @@ use crate::node::Finger;
 use crate::{Client, Node, NodeId};
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::vec;
 
 #[cfg(test)]
 pub(crate) mod tests;
@@ -18,11 +19,10 @@ pub struct NodeService<C: Client> {
 }
 
 impl<C: Client + Clone> NodeService<C> {
-
     /// Create a new node service
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `socket_addr` - The address of the node
     /// * `replication_factor` - The number of successors to keep track of
     pub fn new(socket_addr: SocketAddr, replication_factor: usize) -> Self {
@@ -146,6 +146,20 @@ impl<C: Client + Clone> NodeService<C> {
             })
             .await?;
 
+        Ok(())
+    }
+
+    pub async fn reconcile_successors(&self) -> Result<(), error::ServiceError> {
+        let successor = self.store().successor();
+        let client: Arc<C> = self.client(successor.clone()).await;
+        let successors_of_successor = client.successor_list().await?;
+
+        let mut successors = vec![successor];
+        successors.extend(successors_of_successor);
+
+        // TODO: the list should have the specific size
+        // if the successor returns less than we expect, we shouldn't remove any elements
+        self.store().set_successor_list(successors);
         Ok(())
     }
 

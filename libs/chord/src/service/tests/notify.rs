@@ -1,6 +1,6 @@
 use crate::client::MockClient;
 use crate::service::tests;
-use crate::{NodeService, NodeId};
+use crate::{NodeId, NodeService};
 use std::net::SocketAddr;
 
 #[test]
