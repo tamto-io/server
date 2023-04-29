@@ -63,7 +63,7 @@ impl<C: Client + Clone> NodeService<C> {
             Ok(successor)
         } else {
             let n = self.closest_preceding_node(id);
-            let client: Arc<C> = self.client(n).await;
+            let client: Arc<C> = self.client(&n).await;
             let successor = client.find_successor(id).await?;
             Ok(successor)
         }
@@ -86,7 +86,7 @@ impl<C: Client + Clone> NodeService<C> {
     ///
     /// * `node` - The node to join the ring with. It's an existing node in the ring.
     pub async fn join(&self, node: Node) -> Result<(), error::ServiceError> {
-        let client: Arc<C> = self.client(node).await;
+        let client: Arc<C> = self.client(&node).await;
         let successor = client.find_successor(self.id).await?;
         self.store().set_successor(successor);
 
@@ -126,7 +126,7 @@ impl<C: Client + Clone> NodeService<C> {
     /// > This method should be called periodically.
     pub async fn stabilize(&self) -> Result<(), error::ServiceError> {
         let successor = self.store().successor();
-        let client: Arc<C> = self.client(successor).await;
+        let client: Arc<C> = self.client(&successor).await;
         let result = client.predecessor().await;
         drop(client);
 
@@ -137,7 +137,7 @@ impl<C: Client + Clone> NodeService<C> {
         }
 
         let successor = self.store().successor();
-        let client: Arc<C> = self.client(successor).await;
+        let client: Arc<C> = self.client(&successor).await;
 
         client
             .notify(Node {
@@ -150,16 +150,21 @@ impl<C: Client + Clone> NodeService<C> {
     }
 
     pub async fn reconcile_successors(&self) -> Result<(), error::ServiceError> {
-        let successor = self.store().successor();
-        let client: Arc<C> = self.client(successor.clone()).await;
-        let successors_of_successor = client.successor_list().await?;
+        let mut new_successors = vec![];
+        let successors = self.store().successor_list();
+        for successor in successors {
+            let client: Arc<C> = self.client(&successor).await;
+            if let Ok(successors_of_successor) = client.successor_list().await {
+                new_successors.push(successor);
+                new_successors.extend(successors_of_successor);
+                break
+            }
+        }
 
-        let mut successors = vec![successor];
-        successors.extend(successors_of_successor);
-
-        // TODO: the list should have the specific size
-        // if the successor returns less than we expect, we shouldn't remove any elements
-        self.store().set_successor_list(successors);
+        if new_successors.len() == 0 {
+            return Err(error::ServiceError::Unexpected("All successors are down".to_string()))
+        }
+        self.store().set_successor_list(new_successors);
         Ok(())
     }
 
@@ -173,7 +178,7 @@ impl<C: Client + Clone> NodeService<C> {
     /// > This method should be called periodically.
     pub async fn check_predecessor(&self) -> Result<(), error::ServiceError> {
         if let Some(predecessor) = self.store().predecessor() {
-            let client: Arc<C> = self.client(predecessor).await;
+            let client: Arc<C> = self.client(&predecessor).await;
             match client.ping().await {
                 Ok(_) => Ok(()),
                 Err(ClientError::ConnectionFailed(_)) => {
@@ -232,9 +237,10 @@ impl<C: Client + Clone> NodeService<C> {
             .unwrap_or(Node::new(self.addr))
     }
 
-    async fn client(&self, node: Node) -> Arc<C> {
+    async fn client(&self, node: &Node) -> Arc<C> {
         self.clients.get_or_init(node).await
     }
+
 }
 
 pub mod error {

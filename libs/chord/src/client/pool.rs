@@ -25,7 +25,7 @@ impl<C: Client> ClientsPool<C> {
     /// # Arguments
     ///
     /// * `node` - The node to get the client for
-    pub async fn get_or_init(&self, node: Node) -> Arc<C> {
+    pub async fn get_or_init(&self, node: &Node) -> Arc<C> {
         let client = {
             let state = self.clients.lock().unwrap();
             state.get(&node.id()).map(|c| c.clone())
@@ -69,14 +69,14 @@ mod tests {
             assert!(clients.is_empty());
         }
 
-        pool.get_or_init(node.clone()).await;
+        pool.get_or_init(&node).await;
         {
             let clients = pool.clients.lock().unwrap();
             assert_eq!(clients.len(), 1);
             assert!(clients.contains_key(&node.id()));
         }
 
-        pool.get_or_init(node.clone()).await;
+        pool.get_or_init(&node).await;
         {
             let clients = pool.clients.lock().unwrap();
             assert_eq!(clients.len(), 1);

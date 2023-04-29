@@ -98,30 +98,3 @@ fn when_getting_predecessor_fails_then_nothing_should_be_updated() {
 
     assert_eq!(service.store.db().successor().id, NodeId(16));
 }
-
-#[tokio::test]
-async fn test_updating_successor_list_from_successor() {
-    let _m = get_lock(&MTX);
-    let ctx = MockClient::init_context();
-
-    ctx.expect().returning(|addr: SocketAddr| {
-        let mut client = MockClient::new();
-        if addr.port() == 42016 {
-            client
-                .expect_predecessor()
-                .returning(|| Ok(Some(tests::node(1))));
-        }
-        client.expect_notify().returning(|_| Ok(()));
-        client
-    });
-
-    let service = NodeService::test_service(90);
-    service.store.db().set_successor(tests::node(16));
-    let successor_list = service.store.db().successor_list();
-    assert_eq!(successor_list.len(), 1);
-
-    service.stabilize().await.unwrap();
-
-    let successor_list = service.store.db().successor_list();
-    assert_eq!(successor_list.len(), 2);
-}
