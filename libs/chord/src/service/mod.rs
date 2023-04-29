@@ -6,7 +6,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 
 #[derive(Debug)]
 pub struct NodeService<C: Client> {

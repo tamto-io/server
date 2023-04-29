@@ -2,11 +2,11 @@ use crate::client::{MockClient, ClientsPool};
 use crate::{Node, NodeService, NodeId};
 use std::net::SocketAddr;
 
-// mod check_predecessor;
-// mod find_successor;
-// mod fix_fingers;
-// mod join;
-// mod notify;
+mod check_predecessor;
+mod find_successor;
+mod fix_fingers;
+mod join;
+mod notify;
 mod stabilize;
 
 use crate::node::store::NodeStore;
@@ -16,7 +16,7 @@ use mockall::predicate;
 use std::sync::{Mutex, MutexGuard};
 
 lazy_static! {
-    static ref MTX: Mutex<()> = Mutex::new(());
+    pub(crate) static ref MTX: Mutex<()> = Mutex::new(());
 }
 
 // When a test panics, it will poison the Mutex. Since we don't actually
@@ -24,7 +24,7 @@ lazy_static! {
 // the lock regardless.  If you just do `let _m = &MTX.lock().unwrap()`, one
 // test panicking will cause all other tests that try and acquire a lock on
 // that Mutex to also panic.
-fn get_lock(m: &'static Mutex<()>) -> MutexGuard<'static, ()> {
+pub(crate) fn get_lock(m: &'static Mutex<()>) -> MutexGuard<'static, ()> {
     match m.lock() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
@@ -82,25 +82,17 @@ impl NodeService<MockClient> {
         let mut nodes: Vec<Node> = nodes_ids.into_iter().map(|id| node(id)).collect();
         nodes.sort_by(|a, b| a.id.cmp(&b.id));
 
-        // let mut fingers = Vec::with_capacity(64);
-
         for i in 1..size + 1 {
             let finger_id = Finger::sized_finger_id(size, self.id.0, (i) as u8);
 
             let closest = Self::find_closest_successor(NodeId(finger_id), &nodes);
             self.store.db().update_finger((i - 1) as usize, closest);
-            // fingers.push(Finger {
-            //     _start: finger_id,
-            //     node: closest,
-            // });
         }
-
-        // self.store.db().finger_table().finger_table = fingers;
     }
 
-    pub(crate) fn collect_finger_ids(&self) -> Vec<u64> {
-        self.store.db().finger_table().iter().map(|f| f._start).collect()
-    }
+    // pub(crate) fn collect_finger_ids(&self) -> Vec<u64> {
+    //     self.store.db().finger_table().iter().map(|f| f._start).collect()
+    // }
 
     pub(crate) fn collect_finger_node_ids(&self) -> Vec<u64> {
         self.store.db().finger_table().iter().map(|f| f.node.id.0).collect()
