@@ -17,7 +17,7 @@ impl TryFrom<node::Reader<'_>> for Node {
         let id = value.get_id();
         let addr: SocketAddr = value.get_address().unwrap().try_into()?;
 
-        Ok(Node::with_id(id.into(), addr))
+        Ok(Node::with_id(id, addr))
     }
 }
 

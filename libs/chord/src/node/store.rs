@@ -36,10 +36,10 @@ impl NodeStore {
     /// # Arguments
     ///
     /// * `successor` - The immediate successor of the current node
-    /// * `resiliance_factor` - The number of successors to keep track of
-    pub(crate) fn new(successor: Node, resiliance_factor: usize) -> Self {
+    /// * `replication_factor` - The number of successors to keep track of
+    pub(crate) fn new(successor: Node, replication_factor: usize) -> Self {
         Self {
-            db: Db::new(successor, resiliance_factor),
+            db: Db::new(successor, replication_factor),
         }
     }
 
@@ -56,13 +56,16 @@ impl Db {
     /// # Arguments
     /// 
     /// * `node` - The immediate successor of the current node
-    /// * `resiliance_factor` - The number of successors to keep track of
-    pub(crate) fn new(node: Node, resiliance_factor: usize) -> Db {
+    /// * `replication_factor` - The number of successors to keep track of
+    pub(crate) fn new(node: Node, replication_factor: usize) -> Db {
+        let mut successors = Vec::with_capacity(replication_factor);
+        successors.push(node.clone());
+
         let shared = Arc::new(Shared {
             state: Mutex::new(State {
                 predecessor: None,
                 finger_table: Finger::init_finger_table(node),
-                successor_list: Vec::with_capacity(resiliance_factor),
+                successor_list: successors,
             }),
             // background_task: Notify::new(),
         });
@@ -106,8 +109,9 @@ impl Db {
     /// * `successor` - The successor node
     pub(crate) fn set_successor(&self, successor: Node) {
         let mut state = self.shared_state();
-        state.finger_table[0].node = successor;
-
+        // state.finger_table[0].node = successor;
+        state.successor_list[0] = successor;
+        
         drop(state)
     }
 
@@ -115,7 +119,8 @@ impl Db {
     pub(crate) fn successor(&self) -> Node {
         let state = self.shared_state();
 
-        state.finger_table[0].node.clone()
+        // state.finger_table[0].node.clone()
+        state.successor_list[0].clone()
     }
 
     /// Get the closest preceding node
@@ -244,5 +249,15 @@ mod tests {
             Some(successor.clone())
         );
         assert_eq!(store.db().closest_preceding_node(10, 28), Some(successor));
+    }
+
+    #[test]
+    fn test_successor_list_init() {
+        let node = Node::with_id(NodeId(10), SocketAddr::from(([127, 0, 0, 1], 42001)));
+        let store = NodeStore::new(node.clone(), 3);
+
+        let successors = store.db().shared.state.lock().unwrap().successor_list.clone();
+        assert_eq!(successors.len(), 1);
+        assert_eq!(successors[0], node);
     }
 }

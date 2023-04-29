@@ -18,7 +18,7 @@ fn when_predecessor_is_up_it_should_not_be_removed() {
     });
 
     let mut service: NodeService<MockClient> =
-        NodeService::with_id(8, SocketAddr::from(([127, 0, 0, 1], 42001)));
+        NodeService::with_id(8, SocketAddr::from(([127, 0, 0, 1], 42001)), 3);
     service.store.set_successor(tests::node(16));
     service.store.set_predecessor(tests::node(12));
 

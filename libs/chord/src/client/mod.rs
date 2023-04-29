@@ -69,3 +69,10 @@ impl From<RecvError> for ClientError {
         ClientError::Unexpected("Error while receiving command result".to_string())
     }
 }
+
+#[cfg(test)]
+impl Clone for MockClient {
+    fn clone(&self) -> Self {
+        Self::default()
+    }
+}

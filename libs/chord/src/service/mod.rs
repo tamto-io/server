@@ -5,6 +5,9 @@ use crate::{Client, Node, NodeId};
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Debug)]
 pub struct NodeService<C: Client> {
     id: NodeId,
@@ -21,19 +24,20 @@ impl<C: Client + Clone> NodeService<C> {
     /// # Arguments
     /// 
     /// * `socket_addr` - The address of the node
-    /// * `resiliance_factor` - The number of successors to keep track of
-    pub fn new(socket_addr: SocketAddr, resiliance_factor: usize) -> Self {
-        let id = socket_addr.into();
-        Self::with_id(id, socket_addr, resiliance_factor)
+    /// * `replication_factor` - The number of successors to keep track of
+    pub fn new(socket_addr: SocketAddr, replication_factor: usize) -> Self {
+        let id: NodeId = socket_addr.into();
+        Self::with_id(id, socket_addr, replication_factor)
     }
 
-    fn with_id(id: NodeId, addr: SocketAddr, resiliance_factor: usize) -> Self {
-        let store = NodeStore::new(Node::with_id(id, addr), resiliance_factor);
+    fn with_id(id: impl Into<NodeId>, addr: SocketAddr, replication_factor: usize) -> Self {
+        let id = id.into();
+        let store = NodeStore::new(Node::with_id(id, addr), replication_factor);
         Self {
             id,
             addr,
             store,
-            clients: ClientsPool::new(),
+            clients: ClientsPool::default(),
         }
     }
 
@@ -56,7 +60,7 @@ impl<C: Client + Clone> NodeService<C> {
     pub async fn find_successor(&self, id: NodeId) -> Result<Node, error::ServiceError> {
         let successor = self.store().successor();
         if Node::is_between_on_ring(id.0, self.id.0, successor.id.0) {
-            Ok(successor.clone())
+            Ok(successor)
         } else {
             let n = self.closest_preceding_node(id);
             let client: Arc<C> = self.client(n).await;
@@ -70,7 +74,7 @@ impl<C: Client + Clone> NodeService<C> {
     }
 
     pub async fn get_successor(&self) -> Result<Node, error::ServiceError> {
-        Ok(self.store().successor().clone())
+        Ok(self.store().successor())
     }
 
     /// Join the chord ring.
@@ -100,7 +104,7 @@ impl<C: Client + Clone> NodeService<C> {
     pub fn notify(&self, node: Node) {
         let predecessor = self.store().predecessor();
         if predecessor.is_none()
-            || Node::is_between_on_ring(node.id.clone().0, predecessor.unwrap().id.0, self.id.0)
+            || Node::is_between_on_ring(node.id.0, predecessor.unwrap().id.0, self.id.0)
         {
             log::debug!("Setting predecessor to {:?}", node);
             {
@@ -127,7 +131,7 @@ impl<C: Client + Clone> NodeService<C> {
         drop(client);
 
         if let Ok(Some(x)) = result {
-            if Node::is_between_on_ring(x.id.clone().0, self.id.0, self.store().successor().id.0) {
+            if Node::is_between_on_ring(x.id.0, self.id.0, self.store().successor().id.0) {
                 self.store().set_successor(x);
             }
         }

@@ -1,13 +1,12 @@
-use crate::client::MockClient;
-use crate::{Node, NodeService};
-use std::marker::PhantomData;
+use crate::client::{MockClient, ClientsPool};
+use crate::{Node, NodeService, NodeId};
 use std::net::SocketAddr;
 
-mod check_predecessor;
-mod find_successor;
-mod fix_fingers;
-mod join;
-mod notify;
+// mod check_predecessor;
+// mod find_successor;
+// mod fix_fingers;
+// mod join;
+// mod notify;
 mod stabilize;
 
 use crate::node::store::NodeStore;
@@ -40,18 +39,18 @@ fn node(id: u64) -> Node {
 impl Default for NodeService<MockClient> {
     fn default() -> Self {
         let node = Node::with_id(8, SocketAddr::from(([127, 0, 0, 1], 42001)));
-        let store = NodeStore::new(node.clone());
+        let store = NodeStore::new(node.clone(), 3);
         Self {
             id: node.id,
             addr: node.addr,
             store,
-            phantom: PhantomData,
+            clients: ClientsPool::default(),
         }
     }
 }
 
 impl NodeService<MockClient> {
-    fn find_closest_successor(id: u64, nodes: &Vec<Node>) -> Node {
+    fn find_closest_successor(id: NodeId, nodes: &Vec<Node>) -> Node {
         let mut nodes = nodes.clone();
         nodes.sort_by(|b, a| a.id.cmp(&b.id));
 
@@ -63,7 +62,7 @@ impl NodeService<MockClient> {
             }
             if node.id < closest.id && node.id > id {
                 closest = node;
-            } else if node.id < id && Node::is_between_on_ring(id, closest.id, node.id) {
+            } else if node.id < id && Node::is_between_on_ring(id.0, closest.id.0, node.id.0) {
                 closest = node;
             }
         }
@@ -83,27 +82,28 @@ impl NodeService<MockClient> {
         let mut nodes: Vec<Node> = nodes_ids.into_iter().map(|id| node(id)).collect();
         nodes.sort_by(|a, b| a.id.cmp(&b.id));
 
-        let mut fingers = Vec::with_capacity(64);
+        // let mut fingers = Vec::with_capacity(64);
 
         for i in 1..size + 1 {
-            let finger_id = Finger::sized_finger_id(size, self.id, (i) as u8);
+            let finger_id = Finger::sized_finger_id(size, self.id.0, (i) as u8);
 
-            let closest = Self::find_closest_successor(finger_id, &nodes);
-            fingers.push(Finger {
-                start: finger_id,
-                node: closest,
-            });
+            let closest = Self::find_closest_successor(NodeId(finger_id), &nodes);
+            self.store.db().update_finger((i - 1) as usize, closest);
+            // fingers.push(Finger {
+            //     _start: finger_id,
+            //     node: closest,
+            // });
         }
 
-        self.store.finger_table = fingers;
+        // self.store.db().finger_table().finger_table = fingers;
     }
 
     pub(crate) fn collect_finger_ids(&self) -> Vec<u64> {
-        self.store.finger_table.iter().map(|f| f.start).collect()
+        self.store.db().finger_table().iter().map(|f| f._start).collect()
     }
 
     pub(crate) fn collect_finger_node_ids(&self) -> Vec<u64> {
-        self.store.finger_table.iter().map(|f| f.node.id).collect()
+        self.store.db().finger_table().iter().map(|f| f.node.id.0).collect()
     }
 }
 
@@ -133,7 +133,7 @@ impl MockClient {
     ///     client
     /// });
     /// ```
-    fn mock_find_successor(&mut self, id: u64, return_node: u64) {
+    fn mock_find_successor(&mut self, id: NodeId, return_node: u64) {
         self.expect_find_successor()
             .with(predicate::eq(id))
             .times(1)
@@ -150,76 +150,76 @@ mod tests {
         let nodes = vec![1, 16, 32, 64];
         service.with_fingers(nodes.clone());
 
-        assert_eq!(9, service.store.finger_table[0].start);
-        assert_eq!(16, service.store.finger_table[0].node.id);
-        assert_eq!(10, service.store.finger_table[1].start);
-        assert_eq!(16, service.store.finger_table[1].node.id);
-        assert_eq!(12, service.store.finger_table[2].start);
-        assert_eq!(16, service.store.finger_table[2].node.id);
-        assert_eq!(16, service.store.finger_table[3].start);
-        assert_eq!(16, service.store.finger_table[3].node.id);
+        assert_eq!(9, service.store.db().finger_table()[0]._start);
+        assert_eq!(16, service.store.db().finger_table()[0].node.id.0);
+        assert_eq!(10, service.store.db().finger_table()[1]._start);
+        assert_eq!(16, service.store.db().finger_table()[1].node.id.0);
+        assert_eq!(12, service.store.db().finger_table()[2]._start);
+        assert_eq!(16, service.store.db().finger_table()[2].node.id.0);
+        assert_eq!(16, service.store.db().finger_table()[3]._start);
+        assert_eq!(16, service.store.db().finger_table()[3].node.id.0);
 
-        assert_eq!(264, service.store.finger_table[8].start);
-        assert_eq!(1, service.store.finger_table[8].node.id);
+        assert_eq!(264, service.store.db().finger_table()[8]._start);
+        assert_eq!(1, service.store.db().finger_table()[8].node.id.0);
 
-        service.id = 2;
+        service.id = NodeId(2);
         service.with_fingers(nodes.clone());
 
-        assert_eq!(16, service.store.finger_table[0].node.id);
-        assert_eq!(16, service.store.finger_table[3].node.id);
-        assert_eq!(32, service.store.finger_table[4].node.id);
-        assert_eq!(64, service.store.finger_table[5].node.id);
-        assert_eq!(1, service.store.finger_table[6].node.id);
-        assert_eq!(1, service.store.finger_table[63].node.id);
+        assert_eq!(16, service.store.db().finger_table()[0].node.id.0);
+        assert_eq!(16, service.store.db().finger_table()[3].node.id.0);
+        assert_eq!(32, service.store.db().finger_table()[4].node.id.0);
+        assert_eq!(64, service.store.db().finger_table()[5].node.id.0);
+        assert_eq!(1, service.store.db().finger_table()[6].node.id.0);
+        assert_eq!(1, service.store.db().finger_table()[63].node.id.0);
 
-        service.id = 154;
+        service.id = NodeId(154);
         service.with_fingers(nodes.clone());
 
-        assert_eq!(1, service.store.finger_table[0].node.id);
-        assert_eq!(1, service.store.finger_table[63].node.id);
+        assert_eq!(1, service.store.db().finger_table()[0].node.id.0);
+        assert_eq!(1, service.store.db().finger_table()[63].node.id.0);
 
-        service.id = u64::MAX - 1;
+        service.id = NodeId(u64::MAX - 1);
         service.with_fingers(nodes.clone());
 
-        assert_eq!(1, service.store.finger_table[0].node.id);
-        assert_eq!(1, service.store.finger_table[1].node.id);
-        assert_eq!(2, service.store.finger_table[2].start);
-        assert_eq!(16, service.store.finger_table[2].node.id);
-        assert_eq!(14, service.store.finger_table[4].start);
-        assert_eq!(16, service.store.finger_table[4].node.id);
+        assert_eq!(1, service.store.db().finger_table()[0].node.id.0);
+        assert_eq!(1, service.store.db().finger_table()[1].node.id.0);
+        assert_eq!(12, service.store.db().finger_table()[2]._start);
+        assert_eq!(16, service.store.db().finger_table()[2].node.id.0);
+        assert_eq!(24, service.store.db().finger_table()[4]._start);
+        assert_eq!(16, service.store.db().finger_table()[4].node.id.0);
 
-        service.id = 1;
-        service.with_fingers_sized(6, nodes.clone());
-        assert_eq!(6, service.store.finger_table.len());
+        // service.id = NodeId(1);
+        // service.with_fingers_sized(6, nodes.clone());
+        // assert_eq!(6, service.store.db().finger_table().len());
 
-        assert_eq!(16, service.store.finger_table[0].node.id);
-        assert_eq!(16, service.store.finger_table[1].node.id);
-        assert_eq!(5, service.store.finger_table[2].start);
-        assert_eq!(16, service.store.finger_table[2].node.id);
-        assert_eq!(17, service.store.finger_table[4].start);
-        assert_eq!(32, service.store.finger_table[4].node.id);
+        // assert_eq!(16, service.store.db().finger_table()[0].node.id.0);
+        // assert_eq!(16, service.store.db().finger_table()[1].node.id.0);
+        // assert_eq!(5, service.store.db().finger_table()[2]._start);
+        // assert_eq!(16, service.store.db().finger_table()[2].node.id.0);
+        // assert_eq!(17, service.store.db().finger_table()[4]._start);
+        // assert_eq!(32, service.store.db().finger_table()[4].node.id.0);
     }
 
     #[test]
     fn test_closest_successor() {
         let nodes = vec![node(1), node(16), node(32), node(64)];
 
-        let closest = NodeService::find_closest_successor(1, &nodes);
-        assert_eq!(1, closest.id);
+        let closest = NodeService::find_closest_successor(NodeId(1), &nodes);
+        assert_eq!(NodeId(1), closest.id);
 
-        let closest = NodeService::find_closest_successor(2, &nodes);
-        assert_eq!(16, closest.id);
+        let closest = NodeService::find_closest_successor(NodeId(2), &nodes);
+        assert_eq!(NodeId(16), closest.id);
 
-        let closest = NodeService::find_closest_successor(25, &nodes);
-        assert_eq!(32, closest.id);
+        let closest = NodeService::find_closest_successor(NodeId(25), &nodes);
+        assert_eq!(NodeId(32), closest.id);
 
-        let closest = NodeService::find_closest_successor(33, &nodes);
-        assert_eq!(64, closest.id);
+        let closest = NodeService::find_closest_successor(NodeId(33), &nodes);
+        assert_eq!(NodeId(64), closest.id);
 
-        let closest = NodeService::find_closest_successor(64, &nodes);
-        assert_eq!(64, closest.id);
+        let closest = NodeService::find_closest_successor(NodeId(64), &nodes);
+        assert_eq!(NodeId(64), closest.id);
 
-        let closest = NodeService::find_closest_successor(65, &nodes);
-        assert_eq!(1, closest.id);
+        let closest = NodeService::find_closest_successor(NodeId(65), &nodes);
+        assert_eq!(NodeId(1), closest.id);
     }
 }

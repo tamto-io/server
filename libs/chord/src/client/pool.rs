@@ -10,13 +10,15 @@ pub struct ClientsPool<C: Client> {
     clients: Arc<Mutex<HashMap<NodeId, Arc<C>>>>,
 }
 
-impl<C: Client> ClientsPool<C> {
-    pub fn new() -> Self {
+impl <C: Client> Default for ClientsPool<C> {
+    fn default() -> Self {
         Self {
             clients: Arc::new(Mutex::new(HashMap::new())),
         }
     }
+}
 
+impl<C: Client> ClientsPool<C> {
     /// Get the client for the given node.
     /// If the client is not yet initialized, it will be initialized.
     ///
@@ -81,7 +83,7 @@ mod tests {
 
         let node = Node::new("[::1]:42012".parse().unwrap());
 
-        let pool: ClientsPool<MockClient> = ClientsPool::new();
+        let pool: ClientsPool<MockClient> = ClientsPool::default();
         {
             let clients = pool.clients.lock().unwrap();
             assert!(clients.is_empty());

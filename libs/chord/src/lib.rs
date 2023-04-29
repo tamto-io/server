@@ -12,7 +12,7 @@ pub use service::NodeService;
 
 pub use service::error;
 
-#[derive(Clone, Copy, PartialEq, Debug, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Ord, Debug, Eq, Hash)]
 pub struct NodeId(u64);
 
 impl From<SocketAddr> for NodeId {
@@ -64,8 +64,8 @@ impl Node {
         self.addr
     }
 
-    pub fn with_id(id: NodeId, addr: SocketAddr) -> Self {
-        Self { id, addr }
+    pub fn with_id(id: impl Into<NodeId>, addr: SocketAddr) -> Self {
+        Self { id: id.into(), addr }
     }
 
     pub fn id(&self) -> NodeId {
