@@ -63,7 +63,6 @@ impl LocalSpawner {
         tokio::task::spawn_local(rpc_system);
 
         match command {
-            super::Command::Ping(resp) => super::Command::ping(client, resp).await,
             super::command::Command::FindSuccessor(node_id, resp) => {
                 super::Command::find_successor(client, node_id, resp).await
             }
@@ -76,6 +75,10 @@ impl LocalSpawner {
             super::command::Command::Successor(resp) => {
                 super::Command::get_successor(client, resp).await
             }
+            super::command::Command::SuccessorList(resp) => {
+                super::Command::get_successor_list(client, resp).await
+            }
+            super::Command::Ping(resp) => super::Command::ping(client, resp).await,
         }
 
         if let Err(err) = disconnector.await {

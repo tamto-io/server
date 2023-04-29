@@ -124,11 +124,11 @@ impl Db {
     }
 
     /// Set the successor list of the node
-    /// 
+    ///
     /// If successor_list contains more items than `replication_factor`, only the first `replication_factor` items are used.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `successor_list` - The list of successors
     pub(crate) fn set_successor_list(&self, successor_list: Vec<Node>) {
         let mut state = self.shared_state();
@@ -144,7 +144,6 @@ impl Db {
         for i in 0..items {
             state.successor_list.push(successor_list[i].clone());
         }
-
 
         drop(state)
     }

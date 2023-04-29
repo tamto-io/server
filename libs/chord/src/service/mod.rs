@@ -77,6 +77,10 @@ impl<C: Client + Clone> NodeService<C> {
         Ok(self.store().successor())
     }
 
+    pub async fn get_successor_list(&self) -> Result<Vec<Node>, error::ServiceError> {
+        Ok(self.store().successor_list())
+    }
+
     /// Join the chord ring.
     ///
     /// This method is used to join the chord ring. It will find the successor of its own id
@@ -152,18 +156,36 @@ impl<C: Client + Clone> NodeService<C> {
     pub async fn reconcile_successors(&self) -> Result<(), error::ServiceError> {
         let mut new_successors = vec![];
         let successors = self.store().successor_list();
+        let mut failing_nodes = vec![];
         for successor in successors {
             let client: Arc<C> = self.client(&successor).await;
+            log::debug!("Checking successor {:?}", successor.addr);
             if let Ok(successors_of_successor) = client.successor_list().await {
+                log::debug!("Successors of {:?}: {:?}", successor.addr, successors_of_successor);
+
+                // Filter out the current node and failed nodes
+                let successors_of_successor: Vec<Node> = successors_of_successor
+                    .into_iter()
+                    .filter(|x| x.id != self.id)
+                    .filter(|x| !failing_nodes.contains(x))
+                    .collect();
+
                 new_successors.push(successor);
                 new_successors.extend(successors_of_successor);
-                break
+                break;
+            } else {
+                log::debug!("Successor {:?} is down", successor.addr);
+                failing_nodes.push(successor);
             }
         }
 
         if new_successors.len() == 0 {
-            return Err(error::ServiceError::Unexpected("All successors are down".to_string()))
+            return Err(error::ServiceError::Unexpected(
+                "All successors are down".to_string(),
+            ));
         }
+
+        log::debug!("New successors: {:?}", new_successors);
         self.store().set_successor_list(new_successors);
         Ok(())
     }
@@ -240,7 +262,6 @@ impl<C: Client + Clone> NodeService<C> {
     async fn client(&self, node: &Node) -> Arc<C> {
         self.clients.get_or_init(node).await
     }
-
 }
 
 pub mod error {
