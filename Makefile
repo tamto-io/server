@@ -15,4 +15,4 @@ run : build
 	./target/release/server --listen "[::1]:42000"
 
 run-local: build
-	./scripts/run-nodes.sh -n 10 -p 42050
+	./scripts/run-nodes.sh -n 100 -p 42050

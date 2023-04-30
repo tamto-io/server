@@ -207,12 +207,6 @@ impl<C: Client + Clone + Sync + Send + 'static> NodeService<C> {
                 let mut new_successors = vec![successor];
                 new_successors.extend(successors);
 
-                // Filter out the current node and duplicates
-                new_successors = new_successors
-                    .into_iter()
-                    .filter(|s| s.id != self.id)
-                    .collect::<Vec<Node>>();
-
                 self.store().set_successor_list(new_successors);
             }
             Err(err) => {
