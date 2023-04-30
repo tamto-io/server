@@ -119,7 +119,6 @@ impl Db {
     pub(crate) fn successor(&self) -> Node {
         let state = self.shared_state();
 
-        // state.finger_table[0].node.clone()
         state.successor_list[0].clone()
     }
 
