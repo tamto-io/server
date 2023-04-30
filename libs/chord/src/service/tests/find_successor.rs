@@ -32,8 +32,9 @@ async fn find_successor_with_2_nodes() {
         client
     });
 
-    let service: NodeService<MockClient> =
+    let mut service: NodeService<MockClient> =
         NodeService::with_id(8, SocketAddr::from(([127, 0, 0, 1], 42001)), 3);
+    service.with_fingers(vec![16]);
     service.store.db().set_successor(tests::node(16));
 
     assert_eq!(
@@ -133,16 +134,21 @@ async fn find_successor_using_finger_table() {
     ctx.expect().returning(|addr: SocketAddr| {
         let mut client = MockClient::new();
         if addr.port() == 42010 {
-            client.expect_find_successor()
+            client
+                .expect_find_successor()
                 .times(1)
                 .returning(|_| Ok(tests::node(178)));
-
         }
         if addr.port() == 42035 {
-            client.expect_find_successor()
+            client
+                .expect_find_successor()
                 .with(predicate::eq(NodeId(150)))
                 .times(1)
-                .returning(|_| Err(crate::client::ClientError::ConnectionFailed(tests::node(35))));
+                .returning(|_| {
+                    Err(crate::client::ClientError::ConnectionFailed(tests::node(
+                        35,
+                    )))
+                });
         }
 
         if addr.port() == 42001 {
@@ -153,10 +159,11 @@ async fn find_successor_using_finger_table() {
         }
 
         if addr.port() == 42129 {
-            client
-                .expect_find_successor()
-                .times(1)
-                .returning(|_| Err(crate::client::ClientError::ConnectionFailed(tests::node(129))));
+            client.expect_find_successor().times(1).returning(|_| {
+                Err(crate::client::ClientError::ConnectionFailed(tests::node(
+                    129,
+                )))
+            });
         }
         client
     });
@@ -165,11 +172,14 @@ async fn find_successor_using_finger_table() {
     service.with_fingers(vec![1, 10, 35, 129]);
 
     assert_eq!(
-        service.find_successor_using_finger_table(NodeId(150), None).await.unwrap().id,
+        service
+            .find_successor_using_finger_table(NodeId(150), None)
+            .await
+            .unwrap()
+            .id,
         NodeId(178)
     );
 }
-
 
 #[tokio::test]
 async fn find_successor_using_finger_table_and_all_fingers_failing() {
@@ -179,22 +189,28 @@ async fn find_successor_using_finger_table_and_all_fingers_failing() {
     ctx.expect().returning(|addr: SocketAddr| {
         let mut client = MockClient::new();
         if addr.port() == 42008 {
-            client.expect_find_successor()
+            client
+                .expect_find_successor()
                 .times(1)
                 .returning(|_| Err(crate::client::ClientError::ConnectionFailed(tests::node(1))));
-
         }
         if addr.port() == 42010 {
-            client.expect_find_successor()
-                .times(1)
-                .returning(|_| Err(crate::client::ClientError::ConnectionFailed(tests::node(10))));
-
+            client.expect_find_successor().times(1).returning(|_| {
+                Err(crate::client::ClientError::ConnectionFailed(tests::node(
+                    10,
+                )))
+            });
         }
         if addr.port() == 42035 {
-            client.expect_find_successor()
+            client
+                .expect_find_successor()
                 .with(predicate::eq(NodeId(150)))
                 .times(1)
-                .returning(|_| Err(crate::client::ClientError::ConnectionFailed(tests::node(35))));
+                .returning(|_| {
+                    Err(crate::client::ClientError::ConnectionFailed(tests::node(
+                        35,
+                    )))
+                });
         }
 
         client
@@ -203,11 +219,9 @@ async fn find_successor_using_finger_table_and_all_fingers_failing() {
     let mut service: NodeService<MockClient> = NodeService::default();
     service.with_fingers(vec![10, 35]);
 
-    let result = service.find_successor_using_finger_table(NodeId(150), None).await;
+    let result = service
+        .find_successor_using_finger_table(NodeId(150), None)
+        .await;
 
     assert!(result.is_err());
-    // assert_eq!(
-    //     service.find_successor_using_finger_table(NodeId(150), None).await.unwrap().id,
-    //     NodeId(200)
-    // );
 }

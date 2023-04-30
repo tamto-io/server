@@ -60,7 +60,8 @@ impl Command {
 
             let reply = request.send().promise.await?;
             let nodes = reply.get()?.get_nodes()?;
-            let successors: Vec<Node> = nodes.iter()
+            let successors: Vec<Node> = nodes
+                .iter()
                 .map(|node| node.try_into())
                 .collect::<Result<Vec<Node>, ParserError>>()?;
             Ok(successors)

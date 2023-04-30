@@ -65,17 +65,25 @@ impl<C: Client + Clone + Sync + Send + 'static> NodeService<C> {
             Ok(successor)
         } else {
             self.find_successor_using_finger_table(id, None).await
-            // let n = self.closest_preceding_node(id);
-            // let client: Arc<C> = self.client(&n).await;
-            // let successor = client.find_successor(id).await?;
-            // Ok(successor)
         }
     }
 
-    // fn find_successor_using_finger_table(&self, id: NodeId) -> Pin<Box<dyn Future<Output = Result<Node, error::ServiceError>> + Send + 'static>> {
-    
+    /// Find the successor of the given id using the finger table.
+    /// This method is called recursively until the successor is found or until the closest preceding node is the current node.
+    ///
+    /// If a node fails to respond, it's id is used to find new closest preceding node.
+    /// If all nodes fail to respond, an error is returned.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The id to find the successor for
+    /// * `failing_node` - The id of the node that failed to respond. It is used to find the new closest preceding node.    
     #[async_recursion]
-    async fn find_successor_using_finger_table(&self, id: NodeId, failing_node: Option<NodeId>) -> Result<Node, error::ServiceError> {
+    async fn find_successor_using_finger_table(
+        &self,
+        id: NodeId,
+        failing_node: Option<NodeId>,
+    ) -> Result<Node, error::ServiceError> {
         let search_id = failing_node.unwrap_or(id);
         let n = self.closest_preceding_node(search_id);
 
@@ -84,34 +92,16 @@ impl<C: Client + Clone + Sync + Send + 'static> NodeService<C> {
             log::error!("{}", error);
             return Err(error::ServiceError::Unexpected(error));
         }
-        
+
         let client: Arc<C> = self.client(&n).await;
         match client.find_successor(id).await {
             Ok(successor) => Ok(successor),
-            Err(ClientError::ConnectionFailed(_)) => self.find_successor_using_finger_table(id, Some(n.id)).await,
+            Err(ClientError::ConnectionFailed(_)) => {
+                self.find_successor_using_finger_table(id, Some(n.id)).await
+            }
             Err(err) => Err(err.into()),
         }
-        // let client: Arc<C> = self.client(&n).await;
-        // match client.find_successor(id).await {
-        //     Ok(successor) => Ok(successor),
-        //     Err(ClientError::ConnectionFailed(_)) => self.find_successor_using_finger_table(n.id).await,
-        //     Err(err) => Err(err.into()),
-        // }
-        // let successor = client.find_successor(id).await?;
-        // Ok(successor)
     }
-
-    // #[async_recursion]
-    // async fn try_another_node(&self, id: NodeId, failing_node: NodeId) -> Result<Node, error::ServiceError> {
-    //     let n = self.closest_preceding_node(failing_node);
- 
-    //     let client: Arc<C> = self.client(&n).await;
-    //     match client.find_successor(id).await {
-    //         Ok(successor) => Ok(successor),
-    //         Err(ClientError::ConnectionFailed(_)) => self.try_another_node(id, n.id).await,
-    //         Err(err) => Err(err.into()),
-    //     }
-    // }
 
     pub async fn get_predecessor(&self) -> Result<Option<Node>, error::ServiceError> {
         Ok(self.store().predecessor())
@@ -205,7 +195,11 @@ impl<C: Client + Clone + Sync + Send + 'static> NodeService<C> {
             let client: Arc<C> = self.client(&successor).await;
             log::debug!("Checking successor {:?}", successor.addr);
             if let Ok(successors_of_successor) = client.successor_list().await {
-                log::debug!("Successors of {:?}: {:?}", successor.addr, successors_of_successor);
+                log::debug!(
+                    "Successors of {:?}: {:?}",
+                    successor.addr,
+                    successors_of_successor
+                );
 
                 // Filter out the current node and failed nodes
                 let successors_of_successor: Vec<Node> = successors_of_successor

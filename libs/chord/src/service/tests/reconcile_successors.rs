@@ -219,7 +219,6 @@ async fn test_updating_successor_list_with_current_node() {
     assert_eq!(successor_list[1].id, NodeId(64));
 }
 
-
 #[tokio::test]
 async fn test_updating_successor_list_with_failing_node_as_successor() {
     let _m = get_lock(&MTX);

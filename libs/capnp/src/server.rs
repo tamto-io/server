@@ -72,9 +72,7 @@ impl chord_capnp::chord_node::Server for NodeServerImpl {
 
         let service = self.node.clone();
         ::capnp::capability::Promise::from_future(async move {
-            let node = service.get_successor_list()
-                .await
-                .map_err(error_parser)?;
+            let node = service.get_successor_list().await.map_err(error_parser)?;
 
             results.insert(node)?;
 

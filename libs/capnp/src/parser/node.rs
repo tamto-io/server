@@ -167,7 +167,9 @@ impl<'a> ResultBuilder<IpAddr> for chord_capnp::chord_node::node::ip_address::Bu
     }
 }
 
-impl ResultBuilder<Vec<Node>> for capnp::struct_list::Builder<'_, chord_capnp::chord_node::node::Owned> {
+impl ResultBuilder<Vec<Node>>
+    for capnp::struct_list::Builder<'_, chord_capnp::chord_node::node::Owned>
+{
     type Output = ();
 
     #[inline]
