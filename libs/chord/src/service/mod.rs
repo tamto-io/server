@@ -4,7 +4,6 @@ use crate::client::{ClientError, ClientsPool};
 use crate::node::store::{Db, NodeStore};
 use crate::node::Finger;
 use crate::{Client, Node, NodeId};
-use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::vec;
@@ -202,13 +201,9 @@ impl<C: Client + Clone + Sync + Send + 'static> NodeService<C> {
     pub async fn reconcile_successors(&self) {
         let successor = self.store().successor();
         let client: Arc<C> = self.client(&successor).await;
-        let result = client.successor_list().await;
 
-        match result {
+        match client.successor_list().await {
             Ok(successors) => {
-                
-                // let mut successor_set = HashSet::new();
-                // successor_set.insert(successor);
                 let mut new_successors = vec![successor];
                 new_successors.extend(successors);
 

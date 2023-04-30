@@ -142,6 +142,11 @@ async fn test_updating_successor_list_with_successor_failing_to_respond() {
         .set_successor_list(vec![tests::node(16), tests::node(32)]);
 
     service.reconcile_successors().await;
+    let successor_list = service.store.db().successor_list();
+    assert_eq!(successor_list.len(), 1);
+    assert_eq!(successor_list[0].id, NodeId(32));
+
+    service.reconcile_successors().await;
 
     let successor_list = service.store.db().successor_list();
     assert_eq!(successor_list.len(), 2);
@@ -202,7 +207,7 @@ async fn test_updating_successor_list_with_failing_node_as_successor() {
         if addr.port() == 42032 {
             client
                 .expect_successor_list()
-                .returning(|| Ok(vec![tests::node(64), tests::node(16)]));
+                .returning(|| Ok(vec![tests::node(64)]));
         }
         client.expect_notify().returning(|_| Ok(()));
         client
@@ -213,6 +218,12 @@ async fn test_updating_successor_list_with_failing_node_as_successor() {
         .store
         .db()
         .set_successor_list(vec![tests::node(16), tests::node(32)]);
+
+    service.reconcile_successors().await;
+
+    let successor_list = service.store.db().successor_list();
+    assert_eq!(successor_list.len(), 1);
+    assert_eq!(successor_list[0].id, NodeId(32));
 
     service.reconcile_successors().await;
 
