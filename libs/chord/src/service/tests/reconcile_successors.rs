@@ -29,7 +29,7 @@ async fn test_updating_successor_list_from_successor() {
     let successor_list = service.store.db().successor_list();
     assert_eq!(successor_list.len(), 1);
 
-    service.reconcile_successors().await.unwrap();
+    service.reconcile_successors().await;
 
     let successor_list = service.store.db().successor_list();
     assert_eq!(successor_list.len(), 3);
@@ -63,7 +63,7 @@ async fn test_updating_successor_list_from_successor_which_returns_only_one_node
     let successor_list = service.store.db().successor_list();
     assert_eq!(successor_list.len(), 1);
 
-    service.reconcile_successors().await.unwrap();
+    service.reconcile_successors().await;
 
     let successor_list = service.store.db().successor_list();
     assert_eq!(successor_list.len(), 2);
@@ -101,7 +101,7 @@ async fn test_updating_successor_list_from_successor_which_returns_too_many_node
     let successor_list = service.store.db().successor_list();
     assert_eq!(successor_list.len(), 1);
 
-    service.reconcile_successors().await.unwrap();
+    service.reconcile_successors().await;
 
     let successor_list = service.store.db().successor_list();
     assert_eq!(successor_list.len(), 3);
@@ -124,7 +124,7 @@ async fn test_updating_successor_list_with_successor_failing_to_respond() {
 
             client
                 .expect_successor_list()
-                .returning(|| Err(ClientError::ConnectionFailed(tests::node(16))));
+                .returning(|| Err(ClientError::ConnectionFailed("Error".to_string())));
         }
         if addr.port() == 42032 {
             client
@@ -141,48 +141,12 @@ async fn test_updating_successor_list_with_successor_failing_to_respond() {
         .db()
         .set_successor_list(vec![tests::node(16), tests::node(32)]);
 
-    service.reconcile_successors().await.unwrap();
+    service.reconcile_successors().await;
 
     let successor_list = service.store.db().successor_list();
     assert_eq!(successor_list.len(), 2);
     assert_eq!(successor_list[0].id, NodeId(32));
     assert_eq!(successor_list[1].id, NodeId(64));
-}
-
-#[tokio::test]
-async fn test_updating_successor_list_with_all_successors_failing_to_respond() {
-    let _m = get_lock(&MTX);
-    let ctx = MockClient::init_context();
-
-    ctx.expect().returning(|addr: SocketAddr| {
-        let mut client = MockClient::new();
-        if addr.port() == 42016 {
-            client
-                .expect_predecessor()
-                .returning(|| Ok(Some(tests::node(1))));
-
-            client
-                .expect_successor_list()
-                .returning(|| Err(ClientError::ConnectionFailed(tests::node(16))));
-        }
-        if addr.port() == 42032 {
-            client
-                .expect_successor_list()
-                .returning(|| Err(ClientError::ConnectionFailed(tests::node(16))));
-        }
-        client.expect_notify().returning(|_| Ok(()));
-        client
-    });
-
-    let service = NodeService::test_service(90);
-    service
-        .store
-        .db()
-        .set_successor_list(vec![tests::node(16), tests::node(32)]);
-
-    let result = service.reconcile_successors().await;
-
-    assert!(result.is_err());
 }
 
 #[tokio::test]
@@ -211,7 +175,7 @@ async fn test_updating_successor_list_with_current_node() {
         .db()
         .set_successor_list(vec![tests::node(16), tests::node(64)]);
 
-    service.reconcile_successors().await.unwrap();
+    service.reconcile_successors().await;
 
     let successor_list = service.store.db().successor_list();
     assert_eq!(successor_list.len(), 2);
@@ -233,7 +197,7 @@ async fn test_updating_successor_list_with_failing_node_as_successor() {
 
             client
                 .expect_successor_list()
-                .returning(|| Err(ClientError::ConnectionFailed(tests::node(16))));
+                .returning(|| Err(ClientError::ConnectionFailed("Error".to_string())));
         }
         if addr.port() == 42032 {
             client
@@ -250,7 +214,7 @@ async fn test_updating_successor_list_with_failing_node_as_successor() {
         .db()
         .set_successor_list(vec![tests::node(16), tests::node(32)]);
 
-    service.reconcile_successors().await.unwrap();
+    service.reconcile_successors().await;
 
     let successor_list = service.store.db().successor_list();
     assert_eq!(successor_list.len(), 2);

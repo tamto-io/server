@@ -4,6 +4,7 @@ use crate::client::{ClientError, ClientsPool};
 use crate::node::store::{Db, NodeStore};
 use crate::node::Finger;
 use crate::{Client, Node, NodeId};
+use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::vec;
@@ -60,12 +61,26 @@ impl<C: Client + Clone + Sync + Send + 'static> NodeService<C> {
     ///
     /// * `id` - The id to find the successor for
     pub async fn find_successor(&self, id: NodeId) -> Result<Node, error::ServiceError> {
-        let successor = self.store().successor();
-        if Node::is_between_on_ring(id.0, self.id.0, successor.id.0) {
+        if let Some(successor) = self.find_immediate_successor(id).await? {
             Ok(successor)
         } else {
             self.find_successor_using_finger_table(id, None).await
         }
+    }
+
+    /// Find the successor of the given id using the successor list.
+    async fn find_immediate_successor(
+        &self,
+        id: NodeId,
+    ) -> Result<Option<Node>, error::ServiceError> {
+        let successors = self.store().successor_list();
+        for successor in successors {
+            if Node::is_between_on_ring(id.0, self.id.0, successor.id.0) {
+                return Ok(Some(successor));
+            }
+        }
+
+        Ok(None)
     }
 
     /// Find the successor of the given id using the finger table.
@@ -144,10 +159,7 @@ impl<C: Client + Clone + Sync + Send + 'static> NodeService<C> {
         if predecessor.is_none()
             || Node::is_between_on_ring(node.id.0, predecessor.unwrap().id.0, self.id.0)
         {
-            log::debug!("Setting predecessor to {:?}", node);
-            {
-                self.store().set_predecessor(node);
-            }
+            self.store().set_predecessor(node);
         }
     }
 
@@ -187,44 +199,33 @@ impl<C: Client + Clone + Sync + Send + 'static> NodeService<C> {
         Ok(())
     }
 
-    pub async fn reconcile_successors(&self) -> Result<(), error::ServiceError> {
-        let mut new_successors = vec![];
-        let successors = self.store().successor_list();
-        let mut failing_nodes = vec![];
-        for successor in successors {
-            let client: Arc<C> = self.client(&successor).await;
-            log::debug!("Checking successor {:?}", successor.addr);
-            if let Ok(successors_of_successor) = client.successor_list().await {
-                log::debug!(
-                    "Successors of {:?}: {:?}",
-                    successor.addr,
-                    successors_of_successor
-                );
+    pub async fn reconcile_successors(&self) {
+        let successor = self.store().successor();
+        let client: Arc<C> = self.client(&successor).await;
+        let result = client.successor_list().await;
 
-                // Filter out the current node and failed nodes
-                let successors_of_successor: Vec<Node> = successors_of_successor
+        match result {
+            Ok(successors) => {
+                
+                // let mut successor_set = HashSet::new();
+                // successor_set.insert(successor);
+                let mut new_successors = vec![successor];
+                new_successors.extend(successors);
+
+                // Filter out the current node and duplicates
+                new_successors = new_successors
                     .into_iter()
-                    .filter(|x| x.id != self.id)
-                    .filter(|x| !failing_nodes.contains(x))
-                    .collect();
+                    .filter(|s| s.id != self.id)
+                    .collect::<Vec<Node>>();
 
-                new_successors.push(successor);
-                new_successors.extend(successors_of_successor);
-                break;
-            } else {
-                log::info!("Successor {:?} is down", successor.addr);
-                failing_nodes.push(successor);
+                self.store().set_successor_list(new_successors);
             }
+            Err(err) => {
+                log::info!("Successor {:?} is down, removing from the successor list. Error: {:?}", successor.addr, err);
+                let successors = self.store().successor_list();
+                self.store().set_successor_list(successors[1..].to_vec());
+            },
         }
-
-        if new_successors.len() == 0 {
-            return Err(error::ServiceError::Unexpected(
-                "All successors are down".to_string(),
-            ));
-        }
-
-        self.store().set_successor_list(new_successors);
-        Ok(())
     }
 
     /// Check predecessor
@@ -240,11 +241,11 @@ impl<C: Client + Clone + Sync + Send + 'static> NodeService<C> {
             let client: Arc<C> = self.client(&predecessor).await;
             match client.ping().await {
                 Ok(_) => Ok(()),
-                Err(ClientError::ConnectionFailed(_)) => {
+                Err(err) => {
+                    log::info!("Predecessor {:?} is down, removing. Error: {:?}", predecessor.addr, err);
                     self.store().unset_predecessor();
                     Ok(())
-                }
-                Err(e) => Err(e.into()),
+                },
             }
         } else {
             Ok(())

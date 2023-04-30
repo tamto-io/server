@@ -47,9 +47,7 @@ pub fn background_tasks<T: Client + Clone + Sync + Send + 'static>(
                 log::error!("Check predecessor error: {:?}", err);
             }
 
-            if let Err(err) = service.reconcile_successors().await {
-                log::error!("Reconcile successors error: {:?}", err);
-            }
+            service.reconcile_successors().await;
 
             service.fix_fingers().await;
         }

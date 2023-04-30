@@ -47,7 +47,7 @@ pub trait Client {
 
 #[derive(Debug)]
 pub enum ClientError {
-    ConnectionFailed(Node),
+    ConnectionFailed(String),
     InvalidRequest(String),
     NotInitialized,
     Unexpected(String),
@@ -56,9 +56,7 @@ pub enum ClientError {
 impl Display for ClientError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            ClientError::ConnectionFailed(node) => {
-                write!(f, "Connection to node {} failed", node.addr())
-            }
+            ClientError::ConnectionFailed(message) => write!(f, "{}", message),
             ClientError::NotInitialized => write!(f, "Client not initialized"),
             ClientError::Unexpected(message) => write!(f, "{}", message),
             ClientError::InvalidRequest(message) => write!(f, "Invalid request: {}", message),

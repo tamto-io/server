@@ -145,9 +145,7 @@ async fn find_successor_using_finger_table() {
                 .with(predicate::eq(NodeId(150)))
                 .times(1)
                 .returning(|_| {
-                    Err(crate::client::ClientError::ConnectionFailed(tests::node(
-                        35,
-                    )))
+                    Err(crate::client::ClientError::ConnectionFailed("Error".to_string()))
                 });
         }
 
@@ -160,9 +158,7 @@ async fn find_successor_using_finger_table() {
 
         if addr.port() == 42129 {
             client.expect_find_successor().times(1).returning(|_| {
-                Err(crate::client::ClientError::ConnectionFailed(tests::node(
-                    129,
-                )))
+                Err(crate::client::ClientError::ConnectionFailed("Error".to_string()))
             });
         }
         client
@@ -192,13 +188,11 @@ async fn find_successor_using_finger_table_and_all_fingers_failing() {
             client
                 .expect_find_successor()
                 .times(1)
-                .returning(|_| Err(crate::client::ClientError::ConnectionFailed(tests::node(1))));
+                .returning(|_| Err(crate::client::ClientError::ConnectionFailed("Error".to_string())));
         }
         if addr.port() == 42010 {
             client.expect_find_successor().times(1).returning(|_| {
-                Err(crate::client::ClientError::ConnectionFailed(tests::node(
-                    10,
-                )))
+                Err(crate::client::ClientError::ConnectionFailed("Error".to_string()))
             });
         }
         if addr.port() == 42035 {
@@ -207,9 +201,7 @@ async fn find_successor_using_finger_table_and_all_fingers_failing() {
                 .with(predicate::eq(NodeId(150)))
                 .times(1)
                 .returning(|_| {
-                    Err(crate::client::ClientError::ConnectionFailed(tests::node(
-                        35,
-                    )))
+                    Err(crate::client::ClientError::ConnectionFailed("Error".to_string()))
                 });
         }
 
@@ -224,4 +216,45 @@ async fn find_successor_using_finger_table_and_all_fingers_failing() {
         .await;
 
     assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn find_successor_immediate_successor_list() {
+    let service: NodeService<MockClient> = NodeService::default();
+    service
+        .store
+        .db()
+        .set_successor_list(vec![tests::node(10), tests::node(16), tests::node(60)]);
+
+    assert_eq!(
+        service
+            .find_immediate_successor(NodeId(9))
+            .await
+            .unwrap()
+            .unwrap()
+            .id,
+        NodeId(10)
+    );
+    assert_eq!(
+        service
+            .find_immediate_successor(NodeId(11))
+            .await
+            .unwrap()
+            .unwrap()
+            .id,
+        NodeId(16)
+    );
+    assert_eq!(
+        service
+            .find_immediate_successor(NodeId(50))
+            .await
+            .unwrap()
+            .unwrap()
+            .id,
+        NodeId(60)
+    );
+    assert_eq!(
+        service.find_immediate_successor(NodeId(100)).await.unwrap(),
+        None
+    );
 }

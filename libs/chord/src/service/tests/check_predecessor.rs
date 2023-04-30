@@ -39,7 +39,7 @@ async fn when_predecessor_is_down_it_should_be_removed() {
             client
                 .expect_ping()
                 .times(1)
-                .returning(|| Err(ClientError::ConnectionFailed(tests::node(10))));
+                .returning(|| Err(ClientError::ConnectionFailed("Error".to_string())));
         }
 
         client

@@ -109,7 +109,7 @@ impl Db {
     /// * `successor` - The successor node
     pub(crate) fn set_successor(&self, successor: Node) {
         let mut state = self.shared_state();
-        // state.finger_table[0].node = successor;
+        log::debug!("Setting successor to {:?}", successor);
         state.successor_list[0] = successor;
 
         drop(state)

@@ -34,7 +34,7 @@ impl From<CapnpClientError> for ClientError {
         match value {
             CapnpClientError::Unexpected(message) => Self::Unexpected(message),
             CapnpClientError::InvalidRequest(message) => Self::InvalidRequest(message),
-            CapnpClientError::ConnectionFailed(message) => Self::Unexpected(message),
+            CapnpClientError::ConnectionFailed(message) => Self::ConnectionFailed(message),
         }
     }
 }
