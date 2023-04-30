@@ -2,7 +2,7 @@ use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use crate::{Client, Node, NodeService};
 
-pub async fn join_ring<T: Client + Clone + Sync + Send>(
+pub async fn join_ring<T: Client + Clone + Sync + Send + 'static>(
     node_service: Arc<NodeService<T>>,
     ring: SocketAddr,
     max_retries: u32,

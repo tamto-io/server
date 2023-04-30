@@ -1,3 +1,5 @@
+use mockall::predicate;
+
 use crate::client::MockClient;
 use crate::service::tests;
 use crate::service::tests::{get_lock, MTX};
@@ -121,4 +123,91 @@ async fn check_closest_preceding_node() {
     assert_eq!(service.closest_preceding_node(NodeId(35)).id, NodeId(10));
     assert_eq!(service.closest_preceding_node(NodeId(100)).id, NodeId(35));
     assert_eq!(service.closest_preceding_node(NodeId(150)).id, NodeId(129));
+}
+
+#[tokio::test]
+async fn find_successor_using_finger_table() {
+    let _m = get_lock(&MTX);
+    let ctx = MockClient::init_context();
+
+    ctx.expect().returning(|addr: SocketAddr| {
+        let mut client = MockClient::new();
+        if addr.port() == 42010 {
+            client.expect_find_successor()
+                .times(1)
+                .returning(|_| Ok(tests::node(178)));
+
+        }
+        if addr.port() == 42035 {
+            client.expect_find_successor()
+                .with(predicate::eq(NodeId(150)))
+                .times(1)
+                .returning(|_| Err(crate::client::ClientError::ConnectionFailed(tests::node(35))));
+        }
+
+        if addr.port() == 42001 {
+            client
+                .expect_find_successor()
+                .times(1)
+                .returning(|_| Ok(tests::node(5)));
+        }
+
+        if addr.port() == 42129 {
+            client
+                .expect_find_successor()
+                .times(1)
+                .returning(|_| Err(crate::client::ClientError::ConnectionFailed(tests::node(129))));
+        }
+        client
+    });
+
+    let mut service: NodeService<MockClient> = NodeService::default();
+    service.with_fingers(vec![1, 10, 35, 129]);
+
+    assert_eq!(
+        service.find_successor_using_finger_table(NodeId(150), None).await.unwrap().id,
+        NodeId(178)
+    );
+}
+
+
+#[tokio::test]
+async fn find_successor_using_finger_table_and_all_fingers_failing() {
+    let _m = get_lock(&MTX);
+    let ctx = MockClient::init_context();
+
+    ctx.expect().returning(|addr: SocketAddr| {
+        let mut client = MockClient::new();
+        if addr.port() == 42008 {
+            client.expect_find_successor()
+                .times(1)
+                .returning(|_| Err(crate::client::ClientError::ConnectionFailed(tests::node(1))));
+
+        }
+        if addr.port() == 42010 {
+            client.expect_find_successor()
+                .times(1)
+                .returning(|_| Err(crate::client::ClientError::ConnectionFailed(tests::node(10))));
+
+        }
+        if addr.port() == 42035 {
+            client.expect_find_successor()
+                .with(predicate::eq(NodeId(150)))
+                .times(1)
+                .returning(|_| Err(crate::client::ClientError::ConnectionFailed(tests::node(35))));
+        }
+
+        client
+    });
+
+    let mut service: NodeService<MockClient> = NodeService::default();
+    service.with_fingers(vec![10, 35]);
+
+    let result = service.find_successor_using_finger_table(NodeId(150), None).await;
+
+    assert!(result.is_err());
+    // assert_eq!(
+    //     service.find_successor_using_finger_table(NodeId(150), None).await.unwrap().id,
+    //     NodeId(200)
+    // );
 }

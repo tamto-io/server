@@ -56,6 +56,7 @@ impl ChordService {
     fn map_error(error: chord_rs::error::ServiceError) -> Status {
         match error {
             chord_rs::error::ServiceError::Unexpected(message) => Status::internal(message),
+            chord_rs::error::ServiceError::ClientDisconnected => todo!(),
         }
     }
 }
@@ -69,6 +70,7 @@ impl From<chord_rs::error::ServiceError> for JoinRingError {
     fn from(error: chord_rs::error::ServiceError) -> Self {
         match error {
             chord_rs::error::ServiceError::Unexpected(_) => Self::ServiceError,
+            chord_rs::error::ServiceError::ClientDisconnected => todo!(),
         }
     }
 }

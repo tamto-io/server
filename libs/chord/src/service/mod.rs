@@ -1,3 +1,5 @@
+use async_recursion::async_recursion;
+
 use crate::client::{ClientError, ClientsPool};
 use crate::node::store::{Db, NodeStore};
 use crate::node::Finger;
@@ -18,7 +20,7 @@ pub struct NodeService<C: Client> {
     clients: ClientsPool<C>,
 }
 
-impl<C: Client + Clone> NodeService<C> {
+impl<C: Client + Clone + Sync + Send + 'static> NodeService<C> {
     /// Create a new node service
     ///
     /// # Arguments
@@ -62,12 +64,54 @@ impl<C: Client + Clone> NodeService<C> {
         if Node::is_between_on_ring(id.0, self.id.0, successor.id.0) {
             Ok(successor)
         } else {
-            let n = self.closest_preceding_node(id);
-            let client: Arc<C> = self.client(&n).await;
-            let successor = client.find_successor(id).await?;
-            Ok(successor)
+            self.find_successor_using_finger_table(id, None).await
+            // let n = self.closest_preceding_node(id);
+            // let client: Arc<C> = self.client(&n).await;
+            // let successor = client.find_successor(id).await?;
+            // Ok(successor)
         }
     }
+
+    // fn find_successor_using_finger_table(&self, id: NodeId) -> Pin<Box<dyn Future<Output = Result<Node, error::ServiceError>> + Send + 'static>> {
+    
+    #[async_recursion]
+    async fn find_successor_using_finger_table(&self, id: NodeId, failing_node: Option<NodeId>) -> Result<Node, error::ServiceError> {
+        let search_id = failing_node.unwrap_or(id);
+        let n = self.closest_preceding_node(search_id);
+
+        if n.id == self.id {
+            let error = format!("Cannot find successor of id '{}' using finger table", id);
+            log::error!("{}", error);
+            return Err(error::ServiceError::Unexpected(error));
+        }
+        
+        let client: Arc<C> = self.client(&n).await;
+        match client.find_successor(id).await {
+            Ok(successor) => Ok(successor),
+            Err(ClientError::ConnectionFailed(_)) => self.find_successor_using_finger_table(id, Some(n.id)).await,
+            Err(err) => Err(err.into()),
+        }
+        // let client: Arc<C> = self.client(&n).await;
+        // match client.find_successor(id).await {
+        //     Ok(successor) => Ok(successor),
+        //     Err(ClientError::ConnectionFailed(_)) => self.find_successor_using_finger_table(n.id).await,
+        //     Err(err) => Err(err.into()),
+        // }
+        // let successor = client.find_successor(id).await?;
+        // Ok(successor)
+    }
+
+    // #[async_recursion]
+    // async fn try_another_node(&self, id: NodeId, failing_node: NodeId) -> Result<Node, error::ServiceError> {
+    //     let n = self.closest_preceding_node(failing_node);
+ 
+    //     let client: Arc<C> = self.client(&n).await;
+    //     match client.find_successor(id).await {
+    //         Ok(successor) => Ok(successor),
+    //         Err(ClientError::ConnectionFailed(_)) => self.try_another_node(id, n.id).await,
+    //         Err(err) => Err(err.into()),
+    //     }
+    // }
 
     pub async fn get_predecessor(&self) -> Result<Option<Node>, error::ServiceError> {
         Ok(self.store().predecessor())
@@ -174,7 +218,7 @@ impl<C: Client + Clone> NodeService<C> {
                 new_successors.extend(successors_of_successor);
                 break;
             } else {
-                log::debug!("Successor {:?} is down", successor.addr);
+                log::info!("Successor {:?} is down", successor.addr);
                 failing_nodes.push(successor);
             }
         }
@@ -185,7 +229,6 @@ impl<C: Client + Clone> NodeService<C> {
             ));
         }
 
-        log::debug!("New successors: {:?}", new_successors);
         self.store().set_successor_list(new_successors);
         Ok(())
     }
@@ -256,7 +299,7 @@ impl<C: Client + Clone> NodeService<C> {
     fn closest_preceding_node(&self, id: NodeId) -> Node {
         self.store()
             .closest_preceding_node(self.id.0, id.0)
-            .unwrap_or(Node::new(self.addr))
+            .unwrap_or(Node::with_id(self.id, self.addr))
     }
 
     async fn client(&self, node: &Node) -> Arc<C> {
@@ -271,11 +314,15 @@ pub mod error {
     #[derive(Debug)]
     pub enum ServiceError {
         Unexpected(String),
+        ClientDisconnected,
     }
 
     impl From<client::ClientError> for ServiceError {
         fn from(err: client::ClientError) -> Self {
-            Self::Unexpected(format!("Client error: {}", err))
+            match err {
+                client::ClientError::ConnectionFailed(_) => Self::ClientDisconnected,
+                _ => Self::Unexpected(format!("Client error: {}", err)),
+            }
         }
     }
 
@@ -283,6 +330,7 @@ pub mod error {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             match self {
                 Self::Unexpected(message) => write!(f, "{}", message),
+                Self::ClientDisconnected => write!(f, "Client disconnected"),
             }
         }
     }
