@@ -13,6 +13,7 @@ use super::CmdResult;
 pub(crate) enum Command {
     FindSuccessor(NodeId, CmdResult<Node>),
     Successor(CmdResult<Node>),
+    SuccessorList(CmdResult<Vec<Node>>),
     Predecessor(CmdResult<Option<Node>>),
     Notify(Node, CmdResult<()>),
     Ping(CmdResult<()>),
@@ -49,6 +50,21 @@ impl Command {
             let reply = request.send().promise.await?;
             let successor = reply.get()?.get_node()?.try_into()?;
             Ok(successor)
+        })
+        .await;
+    }
+
+    pub(crate) async fn get_successor_list(client: Client, sender: CmdResult<Vec<Node>>) {
+        Self::handle_request(sender, || async {
+            let request = client.get_successor_list_request();
+
+            let reply = request.send().promise.await?;
+            let nodes = reply.get()?.get_nodes()?;
+            let successors: Vec<Node> = nodes
+                .iter()
+                .map(|node| node.try_into())
+                .collect::<Result<Vec<Node>, ParserError>>()?;
+            Ok(successors)
         })
         .await;
     }

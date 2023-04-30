@@ -41,7 +41,8 @@ pub struct ChordService {
 
 impl ChordService {
     pub async fn new(addr: SocketAddr, ring: Option<SocketAddr>) -> Self {
-        let node_service = Arc::new(NodeService::new(addr));
+        const REPLICATION_FACTOR: usize = 3; // TODO: make this configurable
+        let node_service = Arc::new(NodeService::new(addr, REPLICATION_FACTOR));
 
         if let Some(ring) = ring {
             const MAX_RETRIES: u32 = 5;
@@ -55,6 +56,7 @@ impl ChordService {
     fn map_error(error: chord_rs::error::ServiceError) -> Status {
         match error {
             chord_rs::error::ServiceError::Unexpected(message) => Status::internal(message),
+            chord_rs::error::ServiceError::ClientDisconnected => todo!(),
         }
     }
 }
@@ -68,6 +70,7 @@ impl From<chord_rs::error::ServiceError> for JoinRingError {
     fn from(error: chord_rs::error::ServiceError) -> Self {
         match error {
             chord_rs::error::ServiceError::Unexpected(_) => Self::ServiceError,
+            chord_rs::error::ServiceError::ClientDisconnected => todo!(),
         }
     }
 }

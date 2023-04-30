@@ -17,7 +17,7 @@ impl TryFrom<node::Reader<'_>> for Node {
         let id = value.get_id();
         let addr: SocketAddr = value.get_address().unwrap().try_into()?;
 
-        Ok(Node::with_id(id.into(), addr))
+        Ok(Node::with_id(id, addr))
     }
 }
 
@@ -87,6 +87,18 @@ impl ResultBuilder<Node> for chord_capnp::chord_node::FindSuccessorResults {
     }
 }
 
+/// Insert a `Vec<Node>` into a `GetSuccessorListResults` struct.
+impl ResultBuilder<Vec<Node>> for chord_capnp::chord_node::GetSuccessorListResults {
+    type Output = ();
+    #[inline]
+    fn insert(mut self, value: Vec<Node>) -> Result<Self::Output, capnp::Error> {
+        let nodes = self.get().init_nodes(value.len() as u32);
+        nodes.insert(value)?;
+
+        Ok(())
+    }
+}
+
 /// Insert a `Option<Node>` into a `GetPredecessorResults` struct.
 impl ResultBuilder<Option<Node>> for chord_capnp::chord_node::GetPredecessorResults {
     type Output = ();
@@ -149,6 +161,22 @@ impl<'a> ResultBuilder<IpAddr> for chord_capnp::chord_node::node::ip_address::Bu
                     ip.set(i, segments[i as usize]);
                 }
             }
+        }
+
+        Ok(())
+    }
+}
+
+impl ResultBuilder<Vec<Node>>
+    for capnp::struct_list::Builder<'_, chord_capnp::chord_node::node::Owned>
+{
+    type Output = ();
+
+    #[inline]
+    fn insert(mut self, value: Vec<Node>) -> Result<Self::Output, capnp::Error> {
+        for (i, node) in value.into_iter().enumerate() {
+            let builder = self.reborrow().get(i as u32);
+            builder.insert(node)?;
         }
 
         Ok(())

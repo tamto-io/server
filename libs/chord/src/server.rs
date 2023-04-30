@@ -2,7 +2,7 @@ use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use crate::{Client, Node, NodeService};
 
-pub async fn join_ring<T: Client + Clone + Sync + Send>(
+pub async fn join_ring<T: Client + Clone + Sync + Send + 'static>(
     node_service: Arc<NodeService<T>>,
     ring: SocketAddr,
     max_retries: u32,
@@ -46,6 +46,8 @@ pub fn background_tasks<T: Client + Clone + Sync + Send + 'static>(
             if let Err(err) = service.check_predecessor().await {
                 log::error!("Check predecessor error: {:?}", err);
             }
+
+            service.reconcile_successors().await;
 
             service.fix_fingers().await;
         }

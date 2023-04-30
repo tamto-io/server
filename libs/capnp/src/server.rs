@@ -63,6 +63,23 @@ impl chord_capnp::chord_node::Server for NodeServerImpl {
         })
     }
 
+    fn get_successor_list(
+        &mut self,
+        _params: chord_capnp::chord_node::GetSuccessorListParams,
+        results: chord_capnp::chord_node::GetSuccessorListResults,
+    ) -> capnp::capability::Promise<(), capnp::Error> {
+        log::trace!("GetSuccessorList received");
+
+        let service = self.node.clone();
+        ::capnp::capability::Promise::from_future(async move {
+            let node = service.get_successor_list().await.map_err(error_parser)?;
+
+            results.insert(node)?;
+
+            Ok(())
+        })
+    }
+
     /// Get the predecessor of the node
     ///
     /// # Arguments

@@ -21,7 +21,9 @@ impl LocalSpawner {
 
             local.spawn_local(async move {
                 while let Some(command) = receiver.recv().await {
-                    Self::run_local(addr, command).await;
+                    if let Err(err) = Self::run_local(addr, command).await {
+                        log::error!("Error when handling a request: {:?}", err);
+                    };
                 }
             });
 
@@ -37,9 +39,11 @@ impl LocalSpawner {
             .expect("Thread with LocalSet has shut down.");
     }
 
-    async fn rpc_system(addr: SocketAddr) -> RpcSystem<rpc_twoparty_capnp::Side> {
-        let stream = tokio::net::TcpStream::connect(&addr).await.unwrap();
-        stream.set_nodelay(true).unwrap();
+    async fn rpc_system(
+        addr: SocketAddr,
+    ) -> Result<RpcSystem<rpc_twoparty_capnp::Side>, SpawnerError> {
+        let stream = tokio::net::TcpStream::connect(&addr).await?;
+        stream.set_nodelay(true)?;
         let (reader, writer) = tokio_util::compat::TokioAsyncReadCompatExt::compat(stream).split();
         let rpc_network = Box::new(twoparty::VatNetwork::new(
             reader,
@@ -48,18 +52,17 @@ impl LocalSpawner {
             Default::default(),
         ));
 
-        return RpcSystem::new(rpc_network, None);
+        return Ok(RpcSystem::new(rpc_network, None));
     }
 
-    async fn run_local(addr: SocketAddr, command: super::Command) {
-        let mut rpc_system = Self::rpc_system(addr).await;
+    async fn run_local(addr: SocketAddr, command: super::Command) -> Result<(), SpawnerError> {
+        let mut rpc_system = Self::rpc_system(addr).await?;
         let client: chord_capnp::chord_node::Client =
             rpc_system.bootstrap(rpc_twoparty_capnp::Side::Server);
         let disconnector = rpc_system.get_disconnector();
         tokio::task::spawn_local(rpc_system);
 
         match command {
-            super::Command::Ping(resp) => super::Command::ping(client, resp).await,
             super::command::Command::FindSuccessor(node_id, resp) => {
                 super::Command::find_successor(client, node_id, resp).await
             }
@@ -72,10 +75,34 @@ impl LocalSpawner {
             super::command::Command::Successor(resp) => {
                 super::Command::get_successor(client, resp).await
             }
+            super::command::Command::SuccessorList(resp) => {
+                super::Command::get_successor_list(client, resp).await
+            }
+            super::Command::Ping(resp) => super::Command::ping(client, resp).await,
         }
 
         if let Err(err) = disconnector.await {
             log::error!("Error disconnecting: {:?}", err);
         }
+
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub(crate) enum SpawnerError {
+    RpcError(capnp::Error),
+    IoError(std::io::Error),
+}
+
+impl From<capnp::Error> for SpawnerError {
+    fn from(err: capnp::Error) -> Self {
+        Self::RpcError(err)
+    }
+}
+
+impl From<std::io::Error> for SpawnerError {
+    fn from(err: std::io::Error) -> Self {
+        Self::IoError(err)
     }
 }

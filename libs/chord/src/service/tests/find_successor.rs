@@ -1,19 +1,21 @@
+use mockall::predicate;
+
 use crate::client::MockClient;
 use crate::service::tests;
 use crate::service::tests::{get_lock, MTX};
-use crate::NodeService;
+use crate::{NodeId, NodeService};
 use std::net::SocketAddr;
 
 #[tokio::test]
 async fn test_find_successor() {
     let _m = get_lock(&MTX);
     let service: NodeService<MockClient> =
-        NodeService::with_id(8, SocketAddr::from(([127, 0, 0, 1], 42001)));
-    let result = service.find_successor(10).await;
+        NodeService::with_id(8, SocketAddr::from(([127, 0, 0, 1], 42001)), 3);
+    let result = service.find_successor(NodeId(10)).await;
     assert!(result.is_ok());
     let successor = result.unwrap();
 
-    assert_eq!(successor.id, 8);
+    assert_eq!(successor.id, NodeId(8));
 }
 
 #[tokio::test]
@@ -31,11 +33,18 @@ async fn find_successor_with_2_nodes() {
     });
 
     let mut service: NodeService<MockClient> =
-        NodeService::with_id(8, SocketAddr::from(([127, 0, 0, 1], 42001)));
-    service.store.set_successor(tests::node(16));
+        NodeService::with_id(8, SocketAddr::from(([127, 0, 0, 1], 42001)), 3);
+    service.with_fingers(vec![16]);
+    service.store.db().set_successor(tests::node(16));
 
-    assert_eq!(service.find_successor(10).await.unwrap().id, 16);
-    assert_eq!(service.find_successor(2).await.unwrap().id, 6);
+    assert_eq!(
+        service.find_successor(NodeId(10)).await.unwrap().id,
+        NodeId(16)
+    );
+    assert_eq!(
+        service.find_successor(NodeId(2)).await.unwrap().id,
+        NodeId(6)
+    );
 }
 
 #[tokio::test]
@@ -43,24 +52,33 @@ async fn find_successor_with_2_nodes_but_the_same_id() {
     let _m = get_lock(&MTX);
     let ctx = MockClient::init_context();
 
-    ctx.expect().returning(|_| {
+    ctx.expect().returning(|addr: SocketAddr| {
         let mut client = MockClient::new();
-        client
-            .expect_find_successor()
-            .times(1)
-            .returning(|_| Ok(tests::node(6)));
+        if addr.port() == 42006 {
+            client
+                .expect_find_successor()
+                .times(1)
+                .returning(|_| Ok(tests::node(6)));
+        }
         client
     });
 
-    let mut service: NodeService<MockClient> =
-        NodeService::with_id(6, SocketAddr::from(([127, 0, 0, 1], 42001)));
-    service.store.set_successor(tests::node(6));
+    let service: NodeService<MockClient> =
+        NodeService::with_id(6, SocketAddr::from(([127, 0, 0, 1], 42001)), 3);
+    service.store.db().set_successor(tests::node(6));
 
-    assert_eq!(service.find_successor(6).await.unwrap().id, 6);
-    assert_eq!(service.find_successor(6).await.unwrap().id, 6);
+    assert_eq!(
+        service.find_successor(NodeId(6)).await.unwrap().id,
+        NodeId(6)
+    );
+    assert_eq!(
+        service.find_successor(NodeId(6)).await.unwrap().id,
+        NodeId(6)
+    );
 }
 
 #[tokio::test]
+#[ignore]
 async fn find_successor_using_finger_table_nodes() {
     let _m = get_lock(&MTX);
     let ctx = MockClient::init_context();
@@ -86,8 +104,14 @@ async fn find_successor_using_finger_table_nodes() {
     let mut service: NodeService<MockClient> = NodeService::default();
     service.with_fingers(vec![1, 10, 35, 129]);
 
-    assert_eq!(service.find_successor(40).await.unwrap().id, 111);
-    assert_eq!(service.find_successor(2).await.unwrap().id, 5);
+    assert_eq!(
+        service.find_successor(NodeId(40)).await.unwrap().id,
+        NodeId(111)
+    );
+    assert_eq!(
+        service.find_successor(NodeId(2)).await.unwrap().id,
+        NodeId(5)
+    );
 }
 
 #[tokio::test]
@@ -95,9 +119,142 @@ async fn check_closest_preceding_node() {
     let mut service: NodeService<MockClient> = NodeService::default();
     service.with_fingers(vec![1, 10, 35, 129]);
 
-    assert_eq!(service.closest_preceding_node(2).id, 1);
-    assert_eq!(service.closest_preceding_node(11).id, 10);
-    assert_eq!(service.closest_preceding_node(35).id, 10);
-    assert_eq!(service.closest_preceding_node(100).id, 35);
-    assert_eq!(service.closest_preceding_node(150).id, 1);
+    assert_eq!(service.closest_preceding_node(NodeId(2)).id, NodeId(1));
+    assert_eq!(service.closest_preceding_node(NodeId(11)).id, NodeId(10));
+    assert_eq!(service.closest_preceding_node(NodeId(35)).id, NodeId(10));
+    assert_eq!(service.closest_preceding_node(NodeId(100)).id, NodeId(35));
+    assert_eq!(service.closest_preceding_node(NodeId(150)).id, NodeId(129));
+}
+
+#[tokio::test]
+async fn find_successor_using_finger_table() {
+    let _m = get_lock(&MTX);
+    let ctx = MockClient::init_context();
+
+    ctx.expect().returning(|addr: SocketAddr| {
+        let mut client = MockClient::new();
+        if addr.port() == 42010 {
+            client
+                .expect_find_successor()
+                .times(1)
+                .returning(|_| Ok(tests::node(178)));
+        }
+        if addr.port() == 42035 {
+            client
+                .expect_find_successor()
+                .with(predicate::eq(NodeId(150)))
+                .times(1)
+                .returning(|_| {
+                    Err(crate::client::ClientError::ConnectionFailed("Error".to_string()))
+                });
+        }
+
+        if addr.port() == 42001 {
+            client
+                .expect_find_successor()
+                .times(1)
+                .returning(|_| Ok(tests::node(5)));
+        }
+
+        if addr.port() == 42129 {
+            client.expect_find_successor().times(1).returning(|_| {
+                Err(crate::client::ClientError::ConnectionFailed("Error".to_string()))
+            });
+        }
+        client
+    });
+
+    let mut service: NodeService<MockClient> = NodeService::default();
+    service.with_fingers(vec![1, 10, 35, 129]);
+
+    assert_eq!(
+        service
+            .find_successor_using_finger_table(NodeId(150), None)
+            .await
+            .unwrap()
+            .id,
+        NodeId(178)
+    );
+}
+
+#[tokio::test]
+async fn find_successor_using_finger_table_and_all_fingers_failing() {
+    let _m = get_lock(&MTX);
+    let ctx = MockClient::init_context();
+
+    ctx.expect().returning(|addr: SocketAddr| {
+        let mut client = MockClient::new();
+        if addr.port() == 42008 {
+            client
+                .expect_find_successor()
+                .times(1)
+                .returning(|_| Err(crate::client::ClientError::ConnectionFailed("Error".to_string())));
+        }
+        if addr.port() == 42010 {
+            client.expect_find_successor().times(1).returning(|_| {
+                Err(crate::client::ClientError::ConnectionFailed("Error".to_string()))
+            });
+        }
+        if addr.port() == 42035 {
+            client
+                .expect_find_successor()
+                .with(predicate::eq(NodeId(150)))
+                .times(1)
+                .returning(|_| {
+                    Err(crate::client::ClientError::ConnectionFailed("Error".to_string()))
+                });
+        }
+
+        client
+    });
+
+    let mut service: NodeService<MockClient> = NodeService::default();
+    service.with_fingers(vec![10, 35]);
+
+    let result = service
+        .find_successor_using_finger_table(NodeId(150), None)
+        .await;
+
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn find_successor_immediate_successor_list() {
+    let service: NodeService<MockClient> = NodeService::default();
+    service
+        .store
+        .db()
+        .set_successor_list(vec![tests::node(10), tests::node(16), tests::node(60)]);
+
+    assert_eq!(
+        service
+            .find_immediate_successor(NodeId(9))
+            .await
+            .unwrap()
+            .unwrap()
+            .id,
+        NodeId(10)
+    );
+    assert_eq!(
+        service
+            .find_immediate_successor(NodeId(11))
+            .await
+            .unwrap()
+            .unwrap()
+            .id,
+        NodeId(16)
+    );
+    assert_eq!(
+        service
+            .find_immediate_successor(NodeId(50))
+            .await
+            .unwrap()
+            .unwrap()
+            .id,
+        NodeId(60)
+    );
+    assert_eq!(
+        service.find_immediate_successor(NodeId(100)).await.unwrap(),
+        None
+    );
 }

@@ -25,6 +25,7 @@ interface ChordNode {
   ping @0 ();
   findSuccessor @1 (id :UInt64) -> (node :Node);
   getSuccessor @2 () -> (node :Node);
-  getPredecessor @3 () -> (node :Option(Node));
-  notify @4 (node :Node);
+  getSuccessorList @3 () -> (nodes :List(Node));
+  getPredecessor @4 () -> (node :Option(Node));
+  notify @5 (node :Node);
 }

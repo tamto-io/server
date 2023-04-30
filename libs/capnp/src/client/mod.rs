@@ -39,6 +39,14 @@ impl Client for ChordCapnpClient {
         Ok(result?)
     }
 
+    async fn successor_list(&self) -> Result<Vec<Node>, ClientError> {
+        let (tx, rx) = oneshot::channel();
+        self.spawner.spawn(Command::SuccessorList(tx));
+
+        let result = rx.await?;
+        Ok(result?)
+    }
+
     async fn predecessor(&self) -> Result<Option<Node>, ClientError> {
         let (tx, rx) = oneshot::channel();
         self.spawner.spawn(Command::Predecessor(tx));
