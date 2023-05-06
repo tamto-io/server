@@ -7,6 +7,7 @@ use chord_proto::chord_node_server::ChordNode;
 pub use chord_proto::chord_node_server::ChordNodeServer;
 use chord_proto::{PingRequest, PingResponse};
 use chord_rs::{Node, NodeService};
+use error_stack::Report;
 pub use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
@@ -53,10 +54,11 @@ impl ChordService {
         Self { node: node_service }
     }
 
-    fn map_error(error: chord_rs::error::ServiceError) -> Status {
-        match error {
+    fn map_error(error: Report<chord_rs::error::ServiceError>) -> Status {
+        match error.current_context() {
             chord_rs::error::ServiceError::Unexpected(message) => Status::internal(message),
             chord_rs::error::ServiceError::ClientDisconnected => todo!(),
+            chord_rs::error::ServiceError::FixMe => todo!(),
         }
     }
 }
@@ -71,6 +73,7 @@ impl From<chord_rs::error::ServiceError> for JoinRingError {
         match error {
             chord_rs::error::ServiceError::Unexpected(_) => Self::ServiceError,
             chord_rs::error::ServiceError::ClientDisconnected => todo!(),
+            chord_rs::error::ServiceError::FixMe => todo!(),
         }
     }
 }

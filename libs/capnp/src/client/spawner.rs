@@ -1,28 +1,45 @@
 use std::net::SocketAddr;
 
 use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
+use error_stack::{Report, IntoReport, ResultExt};
 use futures::AsyncReadExt;
-use tokio::{runtime::Builder, sync::mpsc, task::LocalSet};
+use thiserror::Error;
+use tokio::{runtime::Builder, sync::{mpsc, oneshot}, task::LocalSet};
 
 use crate::chord_capnp;
 
+use super::{command::Command, CapnpClientError};
+
 #[derive(Clone)]
 pub(crate) struct LocalSpawner {
-    sender: mpsc::UnboundedSender<super::Command>,
+    sender: mpsc::UnboundedSender<(super::Command, oneshot::Sender<Result<(), Report<CapnpClientError>>>)>,
 }
 
 impl LocalSpawner {
     pub fn new(addr: SocketAddr) -> Self {
-        let (sender, mut receiver) = mpsc::unbounded_channel();
+        let (sender, mut receiver) = mpsc::unbounded_channel::<(Command, oneshot::Sender<Result<(), Report<CapnpClientError>>>)>();
         let rt = Builder::new_current_thread().enable_all().build().unwrap();
 
         std::thread::spawn(move || {
             let local = LocalSet::new();
 
             local.spawn_local(async move {
-                while let Some(command) = receiver.recv().await {
-                    if let Err(err) = Self::run_local(addr, command).await {
-                        log::error!("Error when handling a request: {:?}", err);
+                while let Some((command, result_sender)) = receiver.recv().await {
+                    let context = command.get_error();
+                    if let Err(report) = Self::run_local(addr, command).await {
+                        match report.current_context() {
+                            SpawnerError::ClientConnectionError => {
+                                log::debug!("{report:?}");
+                            }
+                            _ => {
+                                log::error!("Error when handling a request: {report:?}");
+                            }
+                        }
+                        let _ = result_sender
+                            .send(Err(report.change_context(context)));
+                    } else {
+                        let _ = result_sender
+                            .send(Ok(()));
                     };
                 }
             });
@@ -33,16 +50,20 @@ impl LocalSpawner {
         Self { sender }
     }
 
-    pub(crate) fn spawn(&self, task: super::Command) {
+    pub(crate) fn spawn(&self, task: super::Command) -> oneshot::Receiver<Result<(), Report<CapnpClientError>>> {
+        let (tx, rx) = oneshot::channel();
         self.sender
-            .send(task)
+            .send((task, tx))
             .expect("Thread with LocalSet has shut down.");
+
+        rx
     }
 
     async fn rpc_system(
         addr: SocketAddr,
     ) -> Result<RpcSystem<rpc_twoparty_capnp::Side>, SpawnerError> {
         let stream = tokio::net::TcpStream::connect(&addr).await?;
+
         stream.set_nodelay(true)?;
         let (reader, writer) = tokio_util::compat::TokioAsyncReadCompatExt::compat(stream).split();
         let rpc_network = Box::new(twoparty::VatNetwork::new(
@@ -55,8 +76,10 @@ impl LocalSpawner {
         return Ok(RpcSystem::new(rpc_network, None));
     }
 
-    async fn run_local(addr: SocketAddr, command: super::Command) -> Result<(), SpawnerError> {
-        let mut rpc_system = Self::rpc_system(addr).await?;
+    async fn run_local(addr: SocketAddr, command: super::Command) -> Result<(), Report<SpawnerError>> {
+        let mut rpc_system = Self::rpc_system(addr).await
+            .into_report()
+            .attach_printable_lazy(|| format!("Client address: {:?}", addr))?;
         let client: chord_capnp::chord_node::Client =
             rpc_system.bootstrap(rpc_twoparty_capnp::Side::Server);
         let disconnector = rpc_system.get_disconnector();
@@ -89,20 +112,27 @@ impl LocalSpawner {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub(crate) enum SpawnerError {
-    RpcError(capnp::Error),
-    IoError(std::io::Error),
-}
+    #[error("Failed to connect to client")]
+    ClientConnectionError,
 
-impl From<capnp::Error> for SpawnerError {
-    fn from(err: capnp::Error) -> Self {
-        Self::RpcError(err)
-    }
+    #[error("Other error: {0:?}")]
+    Other(std::io::Error),
 }
 
 impl From<std::io::Error> for SpawnerError {
     fn from(err: std::io::Error) -> Self {
-        Self::IoError(err)
+        match err.kind() {
+            std::io::ErrorKind::ConnectionRefused 
+            | std::io::ErrorKind::ConnectionReset
+            | std::io::ErrorKind::ConnectionAborted
+            | std::io::ErrorKind::NotConnected
+            | std::io::ErrorKind::AddrNotAvailable
+            | std::io::ErrorKind::BrokenPipe
+            | std::io::ErrorKind::TimedOut
+            | std::io::ErrorKind::Interrupted => Self::ClientConnectionError,
+            _ => Self::Other(err),
+        }
     }
 }

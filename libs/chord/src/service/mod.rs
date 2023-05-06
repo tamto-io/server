@@ -1,4 +1,5 @@
 use async_recursion::async_recursion;
+use error_stack::{Result, ResultExt, Report};
 
 use crate::client::{ClientError, ClientsPool};
 use crate::node::store::{Db, NodeStore};
@@ -104,16 +105,32 @@ impl<C: Client + Clone + Sync + Send + 'static> NodeService<C> {
         if n.id == self.id {
             let error = format!("Cannot find successor of id '{}' using finger table", id);
             log::error!("{}", error);
-            return Err(error::ServiceError::Unexpected(error));
+            return Err(Report::new(error::ServiceError::Unexpected(error)));
         }
 
         let client: Arc<C> = self.client(&n).await;
         match client.find_successor(id).await {
-            Ok(successor) => Ok(successor),
-            Err(ClientError::ConnectionFailed(_)) => {
-                self.find_successor_using_finger_table(id, Some(n.id)).await
-            }
-            Err(err) => Err(err.into()),
+            Ok(successor) => Result::Ok(successor),
+            // Err(ClientError::ConnectionFailed(_)) => {
+            //     self.find_successor_using_finger_table(id, Some(n.id)).await
+            // }
+            Err(report) => {
+                match (*report.current_context()).clone() {
+                    ClientError::ConnectionFailed(_) => {
+                        self.find_successor_using_finger_table(id, Some(n.id)).await.change_context(error::ServiceError::FixMe)
+                    }
+                    err => {
+                        Result::Err(report.change_context(err.into()))
+                        // Err(err.into())
+                        // let error = format!(
+                        //     "Failed to find successor of id '{}' using finger table",
+                        //     id
+                        // );
+                        // log::error!("{}", error);
+                        // Err(error::ServiceError::Unexpected(error))
+                    }
+                }
+            },
         }
     }
 
@@ -139,7 +156,7 @@ impl<C: Client + Clone + Sync + Send + 'static> NodeService<C> {
     /// * `node` - The node to join the ring with. It's an existing node in the ring.
     pub async fn join(&self, node: Node) -> Result<(), error::ServiceError> {
         let client: Arc<C> = self.client(&node).await;
-        let successor = client.find_successor(self.id).await?;
+        let successor = client.find_successor(self.id).await.change_context(error::ServiceError::FixMe)?;
         self.store().set_successor(successor);
 
         Ok(())
@@ -193,7 +210,7 @@ impl<C: Client + Clone + Sync + Send + 'static> NodeService<C> {
                 id: self.id,
                 addr: self.addr,
             })
-            .await?;
+            .await.change_context(error::ServiceError::FixMe)?;
 
         Ok(())
     }
@@ -210,7 +227,9 @@ impl<C: Client + Clone + Sync + Send + 'static> NodeService<C> {
                 self.store().set_successor_list(new_successors);
             }
             Err(err) => {
-                log::info!("Successor {:?} is down, removing from the successor list. Error: {:?}", successor.addr, err);
+                log::info!("Successor {:?} is down, removing from the successor list", successor.addr);
+                log::debug!("Successor {:?} error: {err:?}", successor.addr);
+
                 let successors = self.store().successor_list();
                 self.store().set_successor_list(successors[1..].to_vec());
             },
@@ -292,6 +311,8 @@ impl<C: Client + Clone + Sync + Send + 'static> NodeService<C> {
 }
 
 pub mod error {
+    use error_stack::Context;
+
     use crate::client;
     use std::fmt::Display;
 
@@ -299,7 +320,11 @@ pub mod error {
     pub enum ServiceError {
         Unexpected(String),
         ClientDisconnected,
+
+        FixMe,
     }
+
+    impl Context for ServiceError {}
 
     impl From<client::ClientError> for ServiceError {
         fn from(err: client::ClientError) -> Self {
@@ -315,6 +340,7 @@ pub mod error {
             match self {
                 Self::Unexpected(message) => write!(f, "{}", message),
                 Self::ClientDisconnected => write!(f, "Client disconnected"),
+                Self::FixMe => write!(f, "Fix me"),
             }
         }
     }

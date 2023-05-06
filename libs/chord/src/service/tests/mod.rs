@@ -2,13 +2,13 @@ use crate::client::{ClientsPool, MockClient};
 use crate::{Node, NodeId, NodeService};
 use std::net::SocketAddr;
 
-mod check_predecessor;
-mod find_successor;
+// mod check_predecessor;
+// mod find_successor;
 mod fix_fingers;
-mod join;
+// mod join;
 mod notify;
-mod reconcile_successors;
-mod stabilize;
+// mod reconcile_successors;
+// mod stabilize;
 
 use crate::node::store::NodeStore;
 use crate::node::Finger;

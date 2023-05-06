@@ -2,8 +2,10 @@ mod pool;
 
 use crate::{Node, NodeId};
 use async_trait::async_trait;
+use error_stack::Result;
 use mockall::automock;
 pub use pool::ClientsPool;
+use thiserror::Error;
 use std::fmt::{Display, Formatter};
 use std::net::SocketAddr;
 use tokio::sync::oneshot::error::RecvError;
@@ -45,12 +47,14 @@ pub trait Client {
     async fn ping(&self) -> Result<(), ClientError>;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Error)]
 pub enum ClientError {
     ConnectionFailed(String),
     InvalidRequest(String),
     NotInitialized,
     Unexpected(String),
+
+    FixMe,
 }
 
 impl Display for ClientError {
@@ -60,13 +64,14 @@ impl Display for ClientError {
             ClientError::NotInitialized => write!(f, "Client not initialized"),
             ClientError::Unexpected(message) => write!(f, "{}", message),
             ClientError::InvalidRequest(message) => write!(f, "Invalid request: {}", message),
+
+            Self::FixMe => write!(f, "Fix me"),
         }
     }
 }
 
 impl From<RecvError> for ClientError {
-    fn from(value: RecvError) -> Self {
-        log::error!("Error while receiving command result: {}", value);
+    fn from(_: RecvError) -> Self {
         ClientError::Unexpected("Error while receiving command result".to_string())
     }
 }
