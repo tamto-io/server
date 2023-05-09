@@ -1,6 +1,7 @@
 use log::LevelFilter;
 use simplelog::{ColorChoice, CombinedLogger, Config, TermLogger, TerminalMode};
-use tamto_capnp::Server as CapnpServer;
+// use tamto_capnp::Server as CapnpServer;
+use chord_rs::Server;
 
 mod cli;
 use clap::Parser;
@@ -21,9 +22,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // server.await?;
 
-    let server = CapnpServer::new(addr, cli.ring).await;
+    let server = Server::new(addr, cli).await;
 
-    server.run(cli.max_connections).await;
+    server.run().await;
     Ok(())
 }
 

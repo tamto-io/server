@@ -5,7 +5,7 @@ use server::chord_proto;
 pub mod client;
 pub mod server;
 
-impl TryFrom<chord_proto::Node> for chord_rs::Node {
+impl TryFrom<chord_proto::Node> for chord_core::Node {
     type Error = std::net::AddrParseError;
 
     fn try_from(node: chord_proto::Node) -> Result<Self, Self::Error> {
@@ -16,7 +16,7 @@ impl TryFrom<chord_proto::Node> for chord_rs::Node {
 
         let addr = SocketAddr::new(ip, port);
 
-        Ok(chord_rs::Node::with_id(id, addr))
+        Ok(chord_core::Node::with_id(id, addr))
     }
 }
 

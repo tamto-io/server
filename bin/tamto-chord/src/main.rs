@@ -1,4 +1,4 @@
-use chord_rs::Client;
+use chord_core::Client;
 use clap::Parser;
 use commands::{CommandResult, Error};
 use tamto_capnp::client::ChordCapnpClient;

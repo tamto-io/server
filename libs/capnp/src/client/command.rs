@@ -1,4 +1,4 @@
-use chord_rs::{client::ClientError, Node, NodeId};
+use chord_core::{client::ClientError, Node, NodeId};
 use error_stack::{IntoReport, ResultExt};
 use futures::Future;
 

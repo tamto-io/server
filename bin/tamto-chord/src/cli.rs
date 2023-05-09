@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 
-use chord_rs::Client;
+use chord_core::Client;
 use clap::{arg, command, Args, Parser, Subcommand, ValueEnum};
 
 use crate::commands::{lookup::Lookup, ping::Ping, CommandExecute, CommandResult, Error};

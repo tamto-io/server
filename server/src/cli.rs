@@ -1,5 +1,6 @@
 use std::net::SocketAddr;
 
+use chord_rs::Config;
 use clap::{arg, command, Parser, ValueEnum};
 
 #[derive(Parser)]
@@ -30,4 +31,14 @@ pub(crate) enum LogLevel {
     Info,
     Debug,
     Trace,
+}
+
+impl Into<Config> for Cli {
+    fn into(self) -> Config {
+        Config {
+            addr: self.listen,
+            ring: self.ring,
+            max_connections: self.max_connections,
+        }
+    }
 }
