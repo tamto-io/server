@@ -7,7 +7,7 @@ use crate::server::chord_proto::{
 };
 use chord_rs::client::ClientError;
 use chord_rs::{Client, Node, NodeId};
-use error_stack::{Result, IntoReport, ResultExt, Report};
+use error_stack::{IntoReport, Report, Result, ResultExt};
 use tonic::async_trait;
 use tonic::transport::{Channel, Endpoint};
 
@@ -59,7 +59,11 @@ impl Client for ChordGrpcClient {
         let mut client = self.client()?;
 
         let request = tonic::Request::new(FindSuccessorRequest { id: id.into() });
-        let response = client.find_successor(request).await.into_report().change_context(ClientError::Unexpected)?;
+        let response = client
+            .find_successor(request)
+            .await
+            .into_report()
+            .change_context(ClientError::Unexpected)?;
         // if let Err(err) = response {
         //     log::warn!("Failed to find successor: {:?}", err);
         //     return Err(ClientError::Unexpected(err.to_string()));

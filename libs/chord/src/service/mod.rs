@@ -1,5 +1,5 @@
 use async_recursion::async_recursion;
-use error_stack::{Result, ResultExt, Report};
+use error_stack::{Report, Result, ResultExt};
 
 use crate::client::{ClientError, ClientsPool};
 use crate::node::store::{Db, NodeStore};
@@ -111,15 +111,11 @@ impl<C: Client + Clone + Sync + Send + 'static> NodeService<C> {
         let client: Arc<C> = self.client(&n).await;
         match client.find_successor(id).await {
             Ok(successor) => Result::Ok(successor),
-            Err(report) => {
-                match (*report.current_context()).clone() {
-                    ClientError::ConnectionFailed(_) => {
-                        self.find_successor_using_finger_table(id, Some(n.id)).await
-                    }
-                    err => {
-                        Result::Err(report.change_context(err.into()))
-                    }
+            Err(report) => match (*report.current_context()).clone() {
+                ClientError::ConnectionFailed(_) => {
+                    self.find_successor_using_finger_table(id, Some(n.id)).await
                 }
+                err => Result::Err(report.change_context(err.into())),
             },
         }
     }
@@ -146,7 +142,10 @@ impl<C: Client + Clone + Sync + Send + 'static> NodeService<C> {
     /// * `node` - The node to join the ring with. It's an existing node in the ring.
     pub async fn join(&self, node: Node) -> Result<(), error::ServiceError> {
         let client: Arc<C> = self.client(&node).await;
-        let successor = client.find_successor(self.id).await.change_context(error::ServiceError::Unexpected)?;
+        let successor = client
+            .find_successor(self.id)
+            .await
+            .change_context(error::ServiceError::Unexpected)?;
         self.store().set_successor(successor);
 
         Ok(())
@@ -200,7 +199,8 @@ impl<C: Client + Clone + Sync + Send + 'static> NodeService<C> {
                 id: self.id,
                 addr: self.addr,
             })
-            .await.change_context(error::ServiceError::Unexpected)?;
+            .await
+            .change_context(error::ServiceError::Unexpected)?;
 
         Ok(())
     }
@@ -217,12 +217,15 @@ impl<C: Client + Clone + Sync + Send + 'static> NodeService<C> {
                 self.store().set_successor_list(new_successors);
             }
             Err(err) => {
-                log::info!("Successor {:?} is down, removing from the successor list", successor.addr);
+                log::info!(
+                    "Successor {:?} is down, removing from the successor list",
+                    successor.addr
+                );
                 log::debug!("Successor {:?} error: {err:?}", successor.addr);
 
                 let successors = self.store().successor_list();
                 self.store().set_successor_list(successors[1..].to_vec());
-            },
+            }
         }
     }
 
@@ -240,10 +243,14 @@ impl<C: Client + Clone + Sync + Send + 'static> NodeService<C> {
             match client.ping().await {
                 Ok(_) => Ok(()),
                 Err(err) => {
-                    log::info!("Predecessor {:?} is down, removing. Error: {:?}", predecessor.addr, err);
+                    log::info!(
+                        "Predecessor {:?} is down, removing. Error: {:?}",
+                        predecessor.addr,
+                        err
+                    );
                     self.store().unset_predecessor();
                     Ok(())
-                },
+                }
             }
         } else {
             Ok(())

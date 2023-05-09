@@ -1,6 +1,6 @@
-use chord_rs::{Node, NodeId, client::ClientError};
-use futures::Future;
+use chord_rs::{client::ClientError, Node, NodeId};
 use error_stack::{IntoReport, ResultExt};
+use futures::Future;
 
 use crate::{
     chord_capnp::{self, chord_node::Client},
@@ -118,7 +118,8 @@ impl Command {
         F: Future<Output = Result<Res, CapnpClientError>>,
         Res: std::fmt::Debug,
     {
-        let result = f().await
+        let result = f()
+            .await
             .map_err(|err| err.into())
             .into_report()
             .attach_printable_lazy(|| ctx);

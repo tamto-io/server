@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 
 use chord_rs::{client::ClientError, Client, Node, NodeId};
-use error_stack::{Result, ResultExt, IntoReport};
+use error_stack::{IntoReport, Result, ResultExt};
 use thiserror::Error;
 use tokio::sync::oneshot::{self, Sender};
 
@@ -26,7 +26,8 @@ impl Client for ChordCapnpClient {
     }
 
     async fn find_successor(&self, id: NodeId) -> Result<Node, ClientError> {
-        self.handle_request(|tx| Command::FindSuccessor(id, tx)).await
+        self.handle_request(|tx| Command::FindSuccessor(id, tx))
+            .await
     }
 
     async fn successor(&self) -> Result<Node, ClientError> {
@@ -42,7 +43,8 @@ impl Client for ChordCapnpClient {
     }
 
     async fn notify(&self, predecessor: Node) -> Result<(), ClientError> {
-        self.handle_request(|tx| Command::Notify(predecessor, tx)).await
+        self.handle_request(|tx| Command::Notify(predecessor, tx))
+            .await
     }
 
     async fn ping(&self) -> Result<(), ClientError> {
@@ -51,11 +53,17 @@ impl Client for ChordCapnpClient {
 }
 
 impl ChordCapnpClient {
-    async fn handle_request<T>(&self, request: impl FnOnce(Sender<Result<T, ClientError>>) -> Command) -> Result<T, ClientError> {
+    async fn handle_request<T>(
+        &self,
+        request: impl FnOnce(Sender<Result<T, ClientError>>) -> Command,
+    ) -> Result<T, ClientError> {
         let (tx, rx) = oneshot::channel();
         self.spawner.spawn(request(tx)).await.unwrap()?;
 
-        let result = rx.await.into_report().change_context(ClientError::Unexpected)?;
+        let result = rx
+            .await
+            .into_report()
+            .change_context(ClientError::Unexpected)?;
         result
     }
 }
@@ -69,4 +77,3 @@ pub(crate) enum CapnpClientError {
     #[error("Unexpected error: {0}")]
     Unexpected(String),
 }
-

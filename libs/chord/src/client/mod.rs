@@ -5,8 +5,8 @@ use async_trait::async_trait;
 use error_stack::Result;
 use mockall::automock;
 pub use pool::ClientsPool;
-use thiserror::Error;
 use std::net::SocketAddr;
+use thiserror::Error;
 
 #[automock]
 #[async_trait]

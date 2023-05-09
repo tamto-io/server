@@ -2,23 +2,32 @@ use std::net::SocketAddr;
 
 use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
 use chord_rs::client::ClientError;
-use error_stack::{Report, IntoReport, ResultExt};
+use error_stack::{IntoReport, Report, ResultExt};
 use futures::AsyncReadExt;
 use thiserror::Error;
-use tokio::{runtime::Builder, sync::{mpsc, oneshot}, task::LocalSet};
+use tokio::{
+    runtime::Builder,
+    sync::{mpsc, oneshot},
+    task::LocalSet,
+};
 
 use crate::chord_capnp;
 
-use super::{command::Command};
+use super::command::Command;
 
 #[derive(Clone)]
 pub(crate) struct LocalSpawner {
-    sender: mpsc::UnboundedSender<(super::Command, oneshot::Sender<Result<(), Report<ClientError>>>)>,
+    sender: mpsc::UnboundedSender<(
+        super::Command,
+        oneshot::Sender<Result<(), Report<ClientError>>>,
+    )>,
 }
 
 impl LocalSpawner {
     pub fn new(addr: SocketAddr) -> Self {
-        let (sender, mut receiver) = mpsc::unbounded_channel::<(Command, oneshot::Sender<Result<(), Report<ClientError>>>)>();
+        let (sender, mut receiver) =
+            mpsc::unbounded_channel::<(Command, oneshot::Sender<Result<(), Report<ClientError>>>)>(
+            );
         let rt = Builder::new_current_thread().enable_all().build().unwrap();
 
         std::thread::spawn(move || {
@@ -36,11 +45,9 @@ impl LocalSpawner {
                                 log::error!("Error when handling a request: {report:?}");
                             }
                         }
-                        let _ = result_sender
-                            .send(Err(report.change_context(context)));
+                        let _ = result_sender.send(Err(report.change_context(context)));
                     } else {
-                        let _ = result_sender
-                            .send(Ok(()));
+                        let _ = result_sender.send(Ok(()));
                     };
                 }
             });
@@ -51,7 +58,10 @@ impl LocalSpawner {
         Self { sender }
     }
 
-    pub(crate) fn spawn(&self, task: super::Command) -> oneshot::Receiver<Result<(), Report<ClientError>>> {
+    pub(crate) fn spawn(
+        &self,
+        task: super::Command,
+    ) -> oneshot::Receiver<Result<(), Report<ClientError>>> {
         let (tx, rx) = oneshot::channel();
         self.sender
             .send((task, tx))
@@ -77,8 +87,12 @@ impl LocalSpawner {
         return Ok(RpcSystem::new(rpc_network, None));
     }
 
-    async fn run_local(addr: SocketAddr, command: super::Command) -> Result<(), Report<SpawnerError>> {
-        let mut rpc_system = Self::rpc_system(addr).await
+    async fn run_local(
+        addr: SocketAddr,
+        command: super::Command,
+    ) -> Result<(), Report<SpawnerError>> {
+        let mut rpc_system = Self::rpc_system(addr)
+            .await
             .into_report()
             .attach_printable_lazy(|| format!("Client address: {:?}", addr))?;
         let client: chord_capnp::chord_node::Client =
@@ -125,7 +139,7 @@ pub(crate) enum SpawnerError {
 impl From<std::io::Error> for SpawnerError {
     fn from(err: std::io::Error) -> Self {
         match err.kind() {
-            std::io::ErrorKind::ConnectionRefused 
+            std::io::ErrorKind::ConnectionRefused
             | std::io::ErrorKind::ConnectionReset
             | std::io::ErrorKind::ConnectionAborted
             | std::io::ErrorKind::NotConnected

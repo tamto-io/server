@@ -78,7 +78,9 @@ fn when_getting_predecessor_fails_then_nothing_should_be_updated() {
 
     ctx.expect().returning(|_| {
         let mut client = MockClient::new();
-        client.expect_predecessor().returning_error(ClientError::Unexpected);
+        client
+            .expect_predecessor()
+            .returning_error(ClientError::Unexpected);
         client
             .expect_notify()
             .with(predicate::function(|n: &Node| n.id == NodeId(8)))

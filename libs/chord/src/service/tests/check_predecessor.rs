@@ -32,11 +32,11 @@ async fn when_predecessor_is_up_it_should_not_be_removed() {
 async fn when_predecessor_is_down_it_should_be_removed() {
     let _m = get_lock(&MTX);
     let ctx = MockClient::init_context();
-    
+
     ctx.expect().returning(|addr: SocketAddr| {
         let client = MockClient::mock(addr, 10, |mut client| {
             client
-                .expect_ping() 
+                .expect_ping()
                 .times(1)
                 .returning_error(ClientError::ConnectionFailed("Error".to_string()));
 
