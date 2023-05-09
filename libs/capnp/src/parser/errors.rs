@@ -1,3 +1,5 @@
+use chord_rs::client::ClientError;
+
 use crate::client::CapnpClientError;
 
 use super::ParserError;
@@ -5,6 +7,16 @@ use super::ParserError;
 impl From<ParserError> for CapnpClientError {
     fn from(value: ParserError) -> Self {
         CapnpClientError::InvalidRequest(value.to_string())
+    }
+}
+
+impl Into<ClientError> for CapnpClientError {
+    fn into(self) -> ClientError {
+        match self {
+            CapnpClientError::InvalidRequest(m) => ClientError::InvalidRequest(m),
+            CapnpClientError::ConnectionFailed(m) => ClientError::ConnectionFailed(m),
+            CapnpClientError::Unexpected(m) => ClientError::Unexpected(m),
+        }
     }
 }
 

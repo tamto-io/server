@@ -111,23 +111,13 @@ impl<C: Client + Clone + Sync + Send + 'static> NodeService<C> {
         let client: Arc<C> = self.client(&n).await;
         match client.find_successor(id).await {
             Ok(successor) => Result::Ok(successor),
-            // Err(ClientError::ConnectionFailed(_)) => {
-            //     self.find_successor_using_finger_table(id, Some(n.id)).await
-            // }
             Err(report) => {
                 match (*report.current_context()).clone() {
                     ClientError::ConnectionFailed(_) => {
-                        self.find_successor_using_finger_table(id, Some(n.id)).await.change_context(error::ServiceError::FixMe)
+                        self.find_successor_using_finger_table(id, Some(n.id)).await
                     }
                     err => {
                         Result::Err(report.change_context(err.into()))
-                        // Err(err.into())
-                        // let error = format!(
-                        //     "Failed to find successor of id '{}' using finger table",
-                        //     id
-                        // );
-                        // log::error!("{}", error);
-                        // Err(error::ServiceError::Unexpected(error))
                     }
                 }
             },

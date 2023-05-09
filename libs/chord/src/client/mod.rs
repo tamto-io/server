@@ -6,7 +6,6 @@ use error_stack::Result;
 use mockall::automock;
 pub use pool::ClientsPool;
 use thiserror::Error;
-use std::fmt::{Display, Formatter};
 use std::net::SocketAddr;
 use tokio::sync::oneshot::error::RecvError;
 
@@ -49,25 +48,30 @@ pub trait Client {
 
 #[derive(Debug, Clone, Error)]
 pub enum ClientError {
+    #[error("{0}")]
     ConnectionFailed(String),
+    #[error("Invalid request: {0}")]
     InvalidRequest(String),
+    #[error("Client not initialized")]
     NotInitialized,
+    #[error("Unexpected error: {0}")]
     Unexpected(String),
 
+    #[error("Ping failed")]
+    PingFailed,
+    #[error("Find successor failed")]
+    FindSuccessorFailed,
+    #[error("Get successor failed")]
+    GetSuccessorFailed,
+    #[error("Get successor list failed")]
+    GetSuccessorListFailed,
+    #[error("Get predecessor failed")]
+    GetPredecessorFailed,
+    #[error("Notify failed")]
+    NotifyFailed,
+
+    #[error("Fix me")]
     FixMe,
-}
-
-impl Display for ClientError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ClientError::ConnectionFailed(message) => write!(f, "{}", message),
-            ClientError::NotInitialized => write!(f, "Client not initialized"),
-            ClientError::Unexpected(message) => write!(f, "{}", message),
-            ClientError::InvalidRequest(message) => write!(f, "Invalid request: {}", message),
-
-            Self::FixMe => write!(f, "Fix me"),
-        }
-    }
 }
 
 impl From<RecvError> for ClientError {

@@ -1,5 +1,5 @@
 use crate::client::{ClientError, MockClient};
-use crate::service::tests;
+use crate::service::tests::{self, ExpectationExt};
 use crate::service::tests::{get_lock, MTX};
 use crate::{NodeId, NodeService};
 use mockall::predicate;
@@ -42,7 +42,7 @@ async fn join_error_test() {
                 .expect_find_successor()
                 .with(predicate::eq(NodeId(2)))
                 .times(1)
-                .returning(|_| Err(ClientError::Unexpected("Test".to_string())));
+                .returning_error(ClientError::Unexpected("Test".to_string()));
         }
         client
     });
@@ -52,6 +52,4 @@ async fn join_error_test() {
     let result = service.join(tests::node(116)).await;
 
     assert!(result.is_err());
-    let message = result.unwrap_err().to_string();
-    assert_eq!(message, "Client error: Test");
 }

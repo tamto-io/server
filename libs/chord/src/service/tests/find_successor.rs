@@ -1,7 +1,7 @@
 use mockall::predicate;
 
 use crate::client::MockClient;
-use crate::service::tests;
+use crate::service::tests::{self, ExpectationExt};
 use crate::service::tests::{get_lock, MTX};
 use crate::{NodeId, NodeService};
 use std::net::SocketAddr;
@@ -144,9 +144,7 @@ async fn find_successor_using_finger_table() {
                 .expect_find_successor()
                 .with(predicate::eq(NodeId(150)))
                 .times(1)
-                .returning(|_| {
-                    Err(crate::client::ClientError::ConnectionFailed("Error".to_string()))
-                });
+                .returning_error(crate::client::ClientError::ConnectionFailed("Error".to_string()));
         }
 
         if addr.port() == 42001 {
@@ -157,9 +155,7 @@ async fn find_successor_using_finger_table() {
         }
 
         if addr.port() == 42129 {
-            client.expect_find_successor().times(1).returning(|_| {
-                Err(crate::client::ClientError::ConnectionFailed("Error".to_string()))
-            });
+            client.expect_find_successor().times(1).returning_error(crate::client::ClientError::ConnectionFailed("Error".to_string()));
         }
         client
     });
@@ -188,21 +184,17 @@ async fn find_successor_using_finger_table_and_all_fingers_failing() {
             client
                 .expect_find_successor()
                 .times(1)
-                .returning(|_| Err(crate::client::ClientError::ConnectionFailed("Error".to_string())));
+                .returning_error(crate::client::ClientError::ConnectionFailed("Error".to_string()));
         }
         if addr.port() == 42010 {
-            client.expect_find_successor().times(1).returning(|_| {
-                Err(crate::client::ClientError::ConnectionFailed("Error".to_string()))
-            });
+            client.expect_find_successor().times(1).returning_error(crate::client::ClientError::ConnectionFailed("Error".to_string()));
         }
         if addr.port() == 42035 {
             client
                 .expect_find_successor()
                 .with(predicate::eq(NodeId(150)))
                 .times(1)
-                .returning(|_| {
-                    Err(crate::client::ClientError::ConnectionFailed("Error".to_string()))
-                });
+                .returning_error(crate::client::ClientError::ConnectionFailed("Error".to_string()));
         }
 
         client

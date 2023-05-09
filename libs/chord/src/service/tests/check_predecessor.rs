@@ -1,5 +1,5 @@
 use crate::client::{ClientError, MockClient};
-use crate::service::tests;
+use crate::service::tests::{self, ExpectationExt};
 use crate::service::tests::{get_lock, MTX};
 use crate::{NodeId, NodeService};
 use std::net::SocketAddr;
@@ -32,15 +32,16 @@ async fn when_predecessor_is_up_it_should_not_be_removed() {
 async fn when_predecessor_is_down_it_should_be_removed() {
     let _m = get_lock(&MTX);
     let ctx = MockClient::init_context();
-
+    
     ctx.expect().returning(|addr: SocketAddr| {
-        let mut client = MockClient::new();
-        if addr.port() == 42010 {
+        let client = MockClient::mock(addr, 10, |mut client| {
             client
-                .expect_ping()
+                .expect_ping() 
                 .times(1)
-                .returning(|| Err(ClientError::ConnectionFailed("Error".to_string())));
-        }
+                .returning_error(ClientError::ConnectionFailed("Error".to_string()));
+
+            client
+        });
 
         client
     });
