@@ -1,4 +1,5 @@
-use chord_rs::{Node, NodeId};
+use chord_rs::{client::ClientError, Node, NodeId};
+use error_stack::{IntoReport, ResultExt};
 use futures::Future;
 
 use crate::{
@@ -20,8 +21,19 @@ pub(crate) enum Command {
 }
 
 impl Command {
+    pub(crate) fn get_error(&self) -> ClientError {
+        match self {
+            Command::FindSuccessor(_, _) => ClientError::FindSuccessorFailed,
+            Command::Successor(_) => ClientError::GetSuccessorFailed,
+            Command::SuccessorList(_) => ClientError::GetSuccessorListFailed,
+            Command::Predecessor(_) => ClientError::GetPredecessorFailed,
+            Command::Notify(_, _) => ClientError::NotifyFailed,
+            Command::Ping(_) => ClientError::PingFailed,
+        }
+    }
+
     pub(crate) async fn ping(client: Client, sender: CmdResult<()>) {
-        Self::handle_request(sender, || async {
+        Self::handle_request(sender, ClientError::PingFailed, || async {
             let request = client.ping_request();
 
             request.send().promise.await?;
@@ -31,7 +43,7 @@ impl Command {
     }
 
     pub(crate) async fn find_successor(client: Client, id: NodeId, sender: CmdResult<Node>) {
-        Self::handle_request(sender, || async {
+        Self::handle_request(sender, ClientError::FindSuccessorFailed, || async {
             let mut request = client.find_successor_request();
             request.get().set_id(id.into());
 
@@ -44,7 +56,7 @@ impl Command {
     }
 
     pub(crate) async fn get_successor(client: Client, sender: CmdResult<Node>) {
-        Self::handle_request(sender, || async {
+        Self::handle_request(sender, ClientError::GetSuccessorFailed, || async {
             let request = client.get_successor_request();
 
             let reply = request.send().promise.await?;
@@ -55,7 +67,7 @@ impl Command {
     }
 
     pub(crate) async fn get_successor_list(client: Client, sender: CmdResult<Vec<Node>>) {
-        Self::handle_request(sender, || async {
+        Self::handle_request(sender, ClientError::GetSuccessorListFailed, || async {
             let request = client.get_successor_list_request();
 
             let reply = request.send().promise.await?;
@@ -70,7 +82,7 @@ impl Command {
     }
 
     pub(crate) async fn get_predecessor(client: Client, sender: CmdResult<Option<Node>>) {
-        Self::handle_request(sender, || async {
+        Self::handle_request(sender, ClientError::GetPredecessorFailed, || async {
             let request = client.get_predecessor_request();
 
             let reply = request.send().promise.await?;
@@ -90,7 +102,7 @@ impl Command {
     }
 
     pub(crate) async fn notify(client: Client, predecessor: Node, sender: CmdResult<()>) {
-        Self::handle_request(sender, || async {
+        Self::handle_request(sender, ClientError::NotifyFailed, || async {
             let mut request = client.notify_request();
             let node = request.get().init_node();
             node.insert(predecessor)?;
@@ -101,12 +113,16 @@ impl Command {
         .await;
     }
 
-    async fn handle_request<F, Res>(sender: CmdResult<Res>, f: impl FnOnce() -> F)
+    async fn handle_request<F, Res>(sender: CmdResult<Res>, ctx: ClientError, f: impl FnOnce() -> F)
     where
         F: Future<Output = Result<Res, CapnpClientError>>,
         Res: std::fmt::Debug,
     {
-        let result = f().await;
+        let result = f()
+            .await
+            .map_err(|err| err.into())
+            .into_report()
+            .attach_printable_lazy(|| ctx);
 
         sender.send(result).unwrap();
     }

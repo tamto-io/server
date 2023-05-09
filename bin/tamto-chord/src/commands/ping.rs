@@ -15,7 +15,10 @@ impl CommandExecute for Ping {
         C: Client + Clone + Send + Sync,
     {
         let start = std::time::Instant::now();
-        client.ping().await?;
+        client
+            .ping()
+            .await
+            .map_err(|r| (*r.current_context()).clone())?;
 
         let elapsed = start.elapsed();
         let result = CommandResult {

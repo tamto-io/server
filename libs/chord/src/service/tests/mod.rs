@@ -1,4 +1,7 @@
-use crate::client::{ClientsPool, MockClient};
+use crate::client::__mock_MockClient_Client::{
+    __find_successor, __ping, __predecessor, __successor_list,
+};
+use crate::client::{self, ClientsPool, MockClient};
 use crate::{Node, NodeId, NodeService};
 use std::net::SocketAddr;
 
@@ -12,6 +15,7 @@ mod stabilize;
 
 use crate::node::store::NodeStore;
 use crate::node::Finger;
+use error_stack::Report;
 use lazy_static::lazy_static;
 use mockall::predicate;
 use std::sync::{Mutex, MutexGuard};
@@ -147,6 +151,50 @@ impl MockClient {
             .with(predicate::eq(id))
             .times(1)
             .returning(move |_| Ok(node(return_node)));
+    }
+}
+
+trait ExpectationExt<E> {
+    fn returning_error(&mut self, err: E) -> &mut Self;
+}
+
+impl ExpectationExt<client::ClientError> for __ping::Expectation {
+    fn returning_error(&mut self, err: client::ClientError) -> &mut Self {
+        self.returning(move || Err(Report::new(err.to_owned())))
+    }
+}
+
+impl ExpectationExt<client::ClientError> for __find_successor::Expectation {
+    fn returning_error(&mut self, err: client::ClientError) -> &mut Self {
+        self.returning(move |_| Err(Report::new(err.to_owned())))
+    }
+}
+
+impl ExpectationExt<client::ClientError> for __predecessor::Expectation {
+    fn returning_error(&mut self, err: client::ClientError) -> &mut Self {
+        self.returning(move || Err(Report::new(err.to_owned())))
+    }
+}
+
+impl ExpectationExt<client::ClientError> for __successor_list::Expectation {
+    fn returning_error(&mut self, err: client::ClientError) -> &mut Self {
+        self.returning(move || Err(Report::new(err.to_owned())))
+    }
+}
+
+impl MockClient {
+    pub fn mock(
+        addr: SocketAddr,
+        node_id: u64,
+        mock_fn: impl FnOnce(MockClient) -> MockClient,
+    ) -> Self {
+        let mut client = MockClient::new();
+
+        if addr.port() == 42000 + node_id as u16 {
+            client = mock_fn(client);
+        }
+
+        client
     }
 }
 

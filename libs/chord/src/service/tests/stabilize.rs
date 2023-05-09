@@ -1,5 +1,5 @@
 use crate::client::{ClientError, MockClient};
-use crate::service::tests;
+use crate::service::tests::{self, ExpectationExt};
 use crate::service::tests::{get_lock, MTX};
 use crate::{Node, NodeId, NodeService};
 use mockall::predicate;
@@ -78,10 +78,9 @@ fn when_getting_predecessor_fails_then_nothing_should_be_updated() {
 
     ctx.expect().returning(|_| {
         let mut client = MockClient::new();
-        client.expect_predecessor().returning(|| {
-            let error = ClientError::Unexpected("Test".to_string());
-            Err(error)
-        });
+        client
+            .expect_predecessor()
+            .returning_error(ClientError::Unexpected);
         client
             .expect_notify()
             .with(predicate::function(|n: &Node| n.id == NodeId(8)))

@@ -1,4 +1,5 @@
 use async_recursion::async_recursion;
+use error_stack::{Report, Result, ResultExt};
 
 use crate::client::{ClientError, ClientsPool};
 use crate::node::store::{Db, NodeStore};
@@ -104,16 +105,18 @@ impl<C: Client + Clone + Sync + Send + 'static> NodeService<C> {
         if n.id == self.id {
             let error = format!("Cannot find successor of id '{}' using finger table", id);
             log::error!("{}", error);
-            return Err(error::ServiceError::Unexpected(error));
+            return Err(Report::new(error::ServiceError::Unexpected));
         }
 
         let client: Arc<C> = self.client(&n).await;
         match client.find_successor(id).await {
-            Ok(successor) => Ok(successor),
-            Err(ClientError::ConnectionFailed(_)) => {
-                self.find_successor_using_finger_table(id, Some(n.id)).await
-            }
-            Err(err) => Err(err.into()),
+            Ok(successor) => Result::Ok(successor),
+            Err(report) => match (*report.current_context()).clone() {
+                ClientError::ConnectionFailed(_) => {
+                    self.find_successor_using_finger_table(id, Some(n.id)).await
+                }
+                err => Result::Err(report.change_context(err.into())),
+            },
         }
     }
 
@@ -139,7 +142,10 @@ impl<C: Client + Clone + Sync + Send + 'static> NodeService<C> {
     /// * `node` - The node to join the ring with. It's an existing node in the ring.
     pub async fn join(&self, node: Node) -> Result<(), error::ServiceError> {
         let client: Arc<C> = self.client(&node).await;
-        let successor = client.find_successor(self.id).await?;
+        let successor = client
+            .find_successor(self.id)
+            .await
+            .change_context(error::ServiceError::Unexpected)?;
         self.store().set_successor(successor);
 
         Ok(())
@@ -193,7 +199,8 @@ impl<C: Client + Clone + Sync + Send + 'static> NodeService<C> {
                 id: self.id,
                 addr: self.addr,
             })
-            .await?;
+            .await
+            .change_context(error::ServiceError::Unexpected)?;
 
         Ok(())
     }
@@ -210,10 +217,15 @@ impl<C: Client + Clone + Sync + Send + 'static> NodeService<C> {
                 self.store().set_successor_list(new_successors);
             }
             Err(err) => {
-                log::info!("Successor {:?} is down, removing from the successor list. Error: {:?}", successor.addr, err);
+                log::info!(
+                    "Successor {:?} is down, removing from the successor list",
+                    successor.addr
+                );
+                log::debug!("Successor {:?} error: {err:?}", successor.addr);
+
                 let successors = self.store().successor_list();
                 self.store().set_successor_list(successors[1..].to_vec());
-            },
+            }
         }
     }
 
@@ -231,10 +243,14 @@ impl<C: Client + Clone + Sync + Send + 'static> NodeService<C> {
             match client.ping().await {
                 Ok(_) => Ok(()),
                 Err(err) => {
-                    log::info!("Predecessor {:?} is down, removing. Error: {:?}", predecessor.addr, err);
+                    log::info!(
+                        "Predecessor {:?} is down, removing. Error: {:?}",
+                        predecessor.addr,
+                        err
+                    );
                     self.store().unset_predecessor();
                     Ok(())
-                },
+                }
             }
         } else {
             Ok(())
@@ -292,12 +308,15 @@ impl<C: Client + Clone + Sync + Send + 'static> NodeService<C> {
 }
 
 pub mod error {
-    use crate::client;
-    use std::fmt::Display;
+    use thiserror::Error;
 
-    #[derive(Debug)]
+    use crate::client;
+
+    #[derive(Debug, Error)]
     pub enum ServiceError {
-        Unexpected(String),
+        #[error("Unexpected error")]
+        Unexpected,
+        #[error("Client disconnected")]
         ClientDisconnected,
     }
 
@@ -305,16 +324,7 @@ pub mod error {
         fn from(err: client::ClientError) -> Self {
             match err {
                 client::ClientError::ConnectionFailed(_) => Self::ClientDisconnected,
-                _ => Self::Unexpected(format!("Client error: {}", err)),
-            }
-        }
-    }
-
-    impl Display for ServiceError {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            match self {
-                Self::Unexpected(message) => write!(f, "{}", message),
-                Self::ClientDisconnected => write!(f, "Client disconnected"),
+                _ => Self::Unexpected,
             }
         }
     }

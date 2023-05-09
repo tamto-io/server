@@ -31,7 +31,7 @@ impl Display for Error {
 impl From<ClientError> for Error {
     fn from(err: ClientError) -> Self {
         Self {
-            message: format!("Client error: {}", err),
+            message: format!("Client error: {err:?}"),
         }
     }
 }

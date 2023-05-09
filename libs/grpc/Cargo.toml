@@ -12,6 +12,7 @@ chord-rs = { version = "0.1.0", path = "../chord", features = ["async"] }
 prost = "0.11.6"
 tonic = "0.8"
 log = "0.4.17"
+error-stack = "0.3.1"
 
 [build-dependencies]
 tonic-build = "0.8"

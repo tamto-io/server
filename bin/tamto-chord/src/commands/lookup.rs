@@ -17,7 +17,10 @@ impl CommandExecute for Lookup {
         C: Client + Clone + Send + Sync,
     {
         let start = std::time::Instant::now();
-        let node = client.find_successor(self.key.into()).await?;
+        let node = client
+            .find_successor(self.key.into())
+            .await
+            .map_err(|r| (*r.current_context()).clone())?;
 
         let elapsed = start.elapsed();
         let result = CommandResult {

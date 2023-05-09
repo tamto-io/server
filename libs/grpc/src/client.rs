@@ -7,6 +7,7 @@ use crate::server::chord_proto::{
 };
 use chord_rs::client::ClientError;
 use chord_rs::{Client, Node, NodeId};
+use error_stack::{IntoReport, Report, Result, ResultExt};
 use tonic::async_trait;
 use tonic::transport::{Channel, Endpoint};
 
@@ -58,12 +59,16 @@ impl Client for ChordGrpcClient {
         let mut client = self.client()?;
 
         let request = tonic::Request::new(FindSuccessorRequest { id: id.into() });
-        let response = client.find_successor(request).await;
-        if let Err(err) = response {
-            log::warn!("Failed to find successor: {:?}", err);
-            return Err(ClientError::Unexpected(err.to_string()));
-        }
-        let response = response.unwrap().into_inner();
+        let response = client
+            .find_successor(request)
+            .await
+            .into_report()
+            .change_context(ClientError::Unexpected)?;
+        // if let Err(err) = response {
+        //     log::warn!("Failed to find successor: {:?}", err);
+        //     return Err(ClientError::Unexpected(err.to_string()));
+        // }
+        let response = response.into_inner();
 
         let node = response.node.unwrap();
         let node: Node = node.try_into().unwrap();
@@ -82,7 +87,7 @@ impl Client for ChordGrpcClient {
             let node: Node = node.try_into().unwrap();
             Ok(node)
         } else {
-            Err(ClientError::Unexpected("No successor found".to_string()))
+            Err(Report::new(ClientError::Unexpected).attach_printable("No successor found"))
         }
     }
 
@@ -135,7 +140,7 @@ impl ChordGrpcClient {
         if let Some(client) = self.client.client.lock().unwrap().clone() {
             Ok(client)
         } else {
-            Err(ClientError::NotInitialized)
+            Err(Report::new(ClientError::NotInitialized))
         }
     }
 }
@@ -162,7 +167,7 @@ impl std::fmt::Display for IpParseError {
 impl TryFrom<chord_proto::IpAddress> for IpAddr {
     type Error = IpParseError;
 
-    fn try_from(ip: chord_proto::IpAddress) -> Result<Self, Self::Error> {
+    fn try_from(ip: chord_proto::IpAddress) -> std::result::Result<Self, Self::Error> {
         fn ipv4(addr: Vec<u8>) -> [u8; 4] {
             let mut array = [0; 4];
             array.copy_from_slice(&addr);

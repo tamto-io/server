@@ -1,5 +1,5 @@
 use crate::client::{ClientError, MockClient};
-use crate::service::tests;
+use crate::service::tests::{self, ExpectationExt};
 use crate::service::tests::{get_lock, MTX};
 use crate::{NodeId, NodeService};
 use std::net::SocketAddr;
@@ -124,7 +124,7 @@ async fn test_updating_successor_list_with_successor_failing_to_respond() {
 
             client
                 .expect_successor_list()
-                .returning(|| Err(ClientError::ConnectionFailed("Error".to_string())));
+                .returning_error(ClientError::ConnectionFailed("Error".to_string()));
         }
         if addr.port() == 42032 {
             client
@@ -168,7 +168,7 @@ async fn test_updating_successor_list_with_failing_node_as_successor() {
 
             client
                 .expect_successor_list()
-                .returning(|| Err(ClientError::ConnectionFailed("Error".to_string())));
+                .returning_error(ClientError::ConnectionFailed("Error".to_string()));
         }
         if addr.port() == 42032 {
             client
