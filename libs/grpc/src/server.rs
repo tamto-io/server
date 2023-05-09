@@ -55,10 +55,10 @@ impl ChordService {
     }
 
     fn map_error(error: Report<chord_rs::error::ServiceError>) -> Status {
+        let message = error.to_string();
         match error.current_context() {
-            chord_rs::error::ServiceError::Unexpected(message) => Status::internal(message),
+            chord_rs::error::ServiceError::Unexpected => Status::internal(message),
             chord_rs::error::ServiceError::ClientDisconnected => todo!(),
-            chord_rs::error::ServiceError::FixMe => todo!(),
         }
     }
 }
@@ -71,9 +71,8 @@ pub enum JoinRingError {
 impl From<chord_rs::error::ServiceError> for JoinRingError {
     fn from(error: chord_rs::error::ServiceError) -> Self {
         match error {
-            chord_rs::error::ServiceError::Unexpected(_) => Self::ServiceError,
+            chord_rs::error::ServiceError::Unexpected => Self::ServiceError,
             chord_rs::error::ServiceError::ClientDisconnected => todo!(),
-            chord_rs::error::ServiceError::FixMe => todo!(),
         }
     }
 }

@@ -42,7 +42,7 @@ async fn join_error_test() {
                 .expect_find_successor()
                 .with(predicate::eq(NodeId(2)))
                 .times(1)
-                .returning_error(ClientError::Unexpected("Test".to_string()));
+                .returning_error(ClientError::Unexpected);
         }
         client
     });

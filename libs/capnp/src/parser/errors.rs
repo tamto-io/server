@@ -15,7 +15,7 @@ impl Into<ClientError> for CapnpClientError {
         match self {
             CapnpClientError::InvalidRequest(m) => ClientError::InvalidRequest(m),
             CapnpClientError::ConnectionFailed(m) => ClientError::ConnectionFailed(m),
-            CapnpClientError::Unexpected(m) => ClientError::Unexpected(m),
+            CapnpClientError::Unexpected(_) => ClientError::Unexpected,
         }
     }
 }

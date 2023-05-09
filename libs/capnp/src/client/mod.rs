@@ -55,7 +55,7 @@ impl ChordCapnpClient {
         let (tx, rx) = oneshot::channel();
         self.spawner.spawn(request(tx)).await.unwrap()?;
 
-        let result = rx.await.into_report().change_context(ClientError::FixMe)?;
+        let result = rx.await.into_report().change_context(ClientError::Unexpected)?;
         result
     }
 }

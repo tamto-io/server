@@ -59,7 +59,7 @@ impl Client for ChordGrpcClient {
         let mut client = self.client()?;
 
         let request = tonic::Request::new(FindSuccessorRequest { id: id.into() });
-        let response = client.find_successor(request).await.into_report().change_context(ClientError::Unexpected("".to_string()))?;
+        let response = client.find_successor(request).await.into_report().change_context(ClientError::Unexpected)?;
         // if let Err(err) = response {
         //     log::warn!("Failed to find successor: {:?}", err);
         //     return Err(ClientError::Unexpected(err.to_string()));
@@ -83,7 +83,7 @@ impl Client for ChordGrpcClient {
             let node: Node = node.try_into().unwrap();
             Ok(node)
         } else {
-            Err(Report::new(ClientError::Unexpected("No successor found".to_string())))
+            Err(Report::new(ClientError::Unexpected).attach_printable("No successor found"))
         }
     }
 

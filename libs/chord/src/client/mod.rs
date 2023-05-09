@@ -7,7 +7,6 @@ use mockall::automock;
 pub use pool::ClientsPool;
 use thiserror::Error;
 use std::net::SocketAddr;
-use tokio::sync::oneshot::error::RecvError;
 
 #[automock]
 #[async_trait]
@@ -54,8 +53,8 @@ pub enum ClientError {
     InvalidRequest(String),
     #[error("Client not initialized")]
     NotInitialized,
-    #[error("Unexpected error: {0}")]
-    Unexpected(String),
+    #[error("Unexpected error")]
+    Unexpected,
 
     #[error("Ping failed")]
     PingFailed,
@@ -69,15 +68,6 @@ pub enum ClientError {
     GetPredecessorFailed,
     #[error("Notify failed")]
     NotifyFailed,
-
-    #[error("Fix me")]
-    FixMe,
-}
-
-impl From<RecvError> for ClientError {
-    fn from(_: RecvError) -> Self {
-        ClientError::Unexpected("Error while receiving command result".to_string())
-    }
 }
 
 #[cfg(test)]
