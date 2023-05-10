@@ -2,7 +2,8 @@
 name = "chord-rs"
 version = "0.1.0"
 edition = "2021"
-
+description = "A Rust implementation of the Chord protocol"
+repository = "https://github.com/tamto-labs/server"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
