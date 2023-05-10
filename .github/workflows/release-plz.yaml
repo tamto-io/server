@@ -20,6 +20,14 @@ jobs:
           fetch-depth: 0
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Capnp
+        run: sudo apt install -y capnproto
+
       - name: Run release-plz
         uses: MarcoIeni/release-plz-action@v0.5
         env:
