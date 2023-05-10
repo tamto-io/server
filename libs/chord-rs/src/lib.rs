@@ -22,7 +22,7 @@ mod capnp {
     use std::net::SocketAddr;
 
     use crate::Config;
-    use tamto_capnp::Server as CapnpServer;
+    use chord_capnp::Server as CapnpServer;
 
     pub struct Server {
         server: CapnpServer,
@@ -49,9 +49,9 @@ mod capnp {
 #[cfg(feature = "grpc")]
 mod grpc {
     use std::net::SocketAddr;
-    use tamto_grpc::server::ChordNodeServer;
-    use tamto_grpc::server::Server as GrpcServer;
-    use tamto_grpc::server::ChordService;
+    use chord_grpc::server::ChordNodeServer;
+    use chord_grpc::server::Server as GrpcServer;
+    use chord_grpc::server::ChordService;
 
     use crate::Config;
 

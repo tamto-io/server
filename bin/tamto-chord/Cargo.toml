@@ -6,8 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tamto-grpc = { version = "0.1.0", path = "../../libs/grpc" }
-tamto-capnp = { version = "0.1.0", path = "../../libs/capnp" }
+chord-grpc = { version = "0.1.0", path = "../../libs/grpc" }
+chord-capnp = { version = "0.1.0", path = "../../libs/capnp" }
 chord-core = { version = "0.1.0", path = "../../libs/chord-core" }
 
 async-trait = "0.1.67"

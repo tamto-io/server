@@ -8,11 +8,11 @@ edition = "2021"
 [dependencies]
 log = "0.4.17"
 
-tamto-capnp = { path = "../capnp", optional = true }
-tamto-grpc = { path = "../grpc", optional = true }
+chord-capnp = { path = "../capnp", optional = true }
+chord-grpc = { path = "../grpc", optional = true }
 tonic = { version = "0.8", optional = true }
 
 [features]
 default = []
-capnp = ["dep:tamto-capnp"]
-grpc = ["dep:tamto-grpc", "dep:tonic"]
+capnp = ["dep:chord-capnp"]
+grpc = ["dep:chord-grpc", "dep:tonic"]

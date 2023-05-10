@@ -1,7 +1,7 @@
 use chord_core::Client;
 use clap::Parser;
 use commands::{CommandResult, Error};
-use tamto_capnp::client::ChordCapnpClient;
+use chord_capnp::client::ChordCapnpClient;
 
 use crate::{cli::Cli, commands::CommandExecute};
 
