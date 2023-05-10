@@ -2,7 +2,7 @@
 
 Chord protocol implementation in Rust.
 
-![Build Status](https://github.com/tamto-io/server/actions/workflows/rust.yaml/badge.svg)
+![Build Status](https://github.com/tamto-labs/server/actions/workflows/rust.yaml/badge.svg)
 
 This repo contains a Rust implementation of the Chord protocol.
 
@@ -14,7 +14,7 @@ This repo contains a Rust implementation of the Chord protocol.
 
 - [x] Basic Chord protocol
 - [x] gRPC API for between nodes communication
-- [ ] Node leaving the ring. Right now if a node leaves the ring, the ring will be broken.
+- [x] Node leaving the ring. Right now if a node leaves the ring, the ring will be broken.
 - [ ] Data storage
 
 ## Usage
@@ -52,5 +52,3 @@ There is also a CLI tool which can be used to interact with the nodes. You can s
 ```bash
 cargo run -p tamto-chord -- --help
 ```
-
-

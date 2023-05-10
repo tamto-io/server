@@ -88,7 +88,7 @@ impl Node {
     /// Check if 10 is between 5 and 15
     ///
     /// ```
-    /// use chord_rs::Node;
+    /// use chord_core::Node;
     ///
     /// let id = 10;
     /// let node1 = 5;
@@ -99,7 +99,7 @@ impl Node {
     ///
     /// Check if 20 is between 15 and 5
     /// ```
-    /// use chord_rs::Node;
+    /// use chord_core::Node;
     ///
     /// let id = 20;
     /// let node1 = 15;

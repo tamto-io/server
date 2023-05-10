@@ -1,6 +1,6 @@
 use std::num::ParseIntError;
 
-use chord_rs::Client;
+use chord_core::Client;
 
 use crate::cli::PingArgs;
 

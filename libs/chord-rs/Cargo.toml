@@ -1,0 +1,18 @@
+[package]
+name = "chord-rs"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+log = "0.4.17"
+
+chord-capnp = { path = "../capnp", optional = true }
+chord-grpc = { path = "../grpc", optional = true }
+tonic = { version = "0.8", optional = true }
+
+[features]
+default = []
+capnp = ["dep:chord-capnp"]
+grpc = ["dep:chord-grpc", "dep:tonic"]

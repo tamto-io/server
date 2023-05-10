@@ -1,4 +1,4 @@
-DOCKER_IMAGE = "tamto"
+DOCKER_IMAGE = "chord"
 
 build-docker-node:
 	DOCKER_BUILDKIT=1 docker build -t $(DOCKER_IMAGE)-node --target node .

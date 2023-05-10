@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 
-use chord_rs::{client::ClientError, Client, Node, NodeId};
+use chord_core::{client::ClientError, Client, Node, NodeId};
 use error_stack::{IntoReport, Result, ResultExt};
 use thiserror::Error;
 use tokio::sync::oneshot::{self, Sender};

@@ -1,4 +1,4 @@
-use chord_rs::client::ClientError;
+use chord_core::client::ClientError;
 
 use crate::client::CapnpClientError;
 

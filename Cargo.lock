@@ -228,7 +228,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
-name = "chord-rs"
+name = "chord-capnp"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "capnp",
+ "capnp-rpc",
+ "capnpc",
+ "chord-core",
+ "error-stack",
+ "futures",
+ "log",
+ "thiserror",
+ "tokio",
+ "tokio-util",
+]
+
+[[package]]
+name = "chord-core"
 version = "0.1.0"
 dependencies = [
  "async-recursion",
@@ -240,6 +257,30 @@ dependencies = [
  "seahash",
  "thiserror",
  "tokio",
+]
+
+[[package]]
+name = "chord-grpc"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chord-core",
+ "error-stack",
+ "log",
+ "prost",
+ "tokio",
+ "tonic",
+ "tonic-build",
+]
+
+[[package]]
+name = "chord-rs"
+version = "0.1.0"
+dependencies = [
+ "chord-capnp",
+ "chord-grpc",
+ "log",
+ "tonic",
 ]
 
 [[package]]
@@ -1051,11 +1092,10 @@ checksum = "bb2f3770c8bce3bcda7e149193a069a0f4365bda1fa5cd88e03bca26afc1216c"
 name = "server"
 version = "0.1.0"
 dependencies = [
+ "chord-rs",
  "clap",
  "log",
  "simplelog",
- "tamto-capnp",
- "tamto-grpc",
  "tokio",
 ]
 
@@ -1124,48 +1164,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2047c6ded9c721764247e62cd3b03c09ffc529b2ba5b10ec482ae507a4a70160"
 
 [[package]]
-name = "tamto-capnp"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "capnp",
- "capnp-rpc",
- "capnpc",
- "chord-rs",
- "error-stack",
- "futures",
- "log",
- "thiserror",
- "tokio",
- "tokio-util",
-]
-
-[[package]]
 name = "tamto-chord"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "chord-rs",
+ "chord-capnp",
+ "chord-core",
+ "chord-grpc",
  "clap",
  "log",
  "simplelog",
- "tamto-capnp",
- "tamto-grpc",
  "tokio",
-]
-
-[[package]]
-name = "tamto-grpc"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "chord-rs",
- "error-stack",
- "log",
- "prost",
- "tokio",
- "tonic",
- "tonic-build",
 ]
 
 [[package]]
