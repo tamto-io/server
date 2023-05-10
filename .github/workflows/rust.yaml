@@ -23,8 +23,6 @@ jobs:
 
       - name: Install Capnp
         run: sudo apt install -y capnproto
-        with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build
         run: cargo build --verbose
