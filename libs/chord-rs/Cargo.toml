@@ -6,12 +6,13 @@ edition = "2021"
 license = "MIT"
 description = "A Rust implementation of the Chord protocol"
 repository = "https://github.com/tamto-labs/server"
+readme = "../../README.md"
 
 [dependencies]
 log = "0.4.17"
 
-chord-capnp = { path = "../capnp", optional = true }
-chord-grpc = { path = "../grpc", optional = true }
+chord-capnp = { path = "../capnp", version = "0.1", optional = true }
+chord-grpc = { path = "../grpc", version = "0.1", optional = true }
 tonic = { version = "0.8", optional = true }
 
 [features]
