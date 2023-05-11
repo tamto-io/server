@@ -245,20 +245,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "chord-cli"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "chord-capnp",
- "chord-grpc",
- "chord-rs-core",
- "clap",
- "log",
- "simplelog",
- "tokio",
-]
-
-[[package]]
 name = "chord-grpc"
 version = "0.1.0"
 dependencies = [
@@ -280,6 +266,20 @@ dependencies = [
  "chord-grpc",
  "log",
  "tonic",
+]
+
+[[package]]
+name = "chord-rs-cli"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chord-capnp",
+ "chord-grpc",
+ "chord-rs-core",
+ "clap",
+ "log",
+ "simplelog",
+ "tokio",
 ]
 
 [[package]]

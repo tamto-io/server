@@ -50,5 +50,5 @@ It will run 10 nodes on the following ports `50050` to `50060`. You can find log
 There is also a CLI tool which can be used to interact with the nodes. You can see the list of commands by running:
 
 ```bash
-cargo run -p chord-cli -- --help
+cargo run -p chord-rs-cli -- --help
 ```
