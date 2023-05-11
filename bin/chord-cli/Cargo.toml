@@ -1,8 +1,9 @@
 [package]
-name = "tamto-chord"
+name = "chord-cli"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
+description = "CLI tool to interact with a chord cluster, it's part of the chord-rs project"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
