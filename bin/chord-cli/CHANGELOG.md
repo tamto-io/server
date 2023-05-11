@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1](https://github.com/tamto-labs/server/compare/chord-rs-cli-v0.1.0...chord-rs-cli-v0.1.1) - 2023-05-11
+
+### Other
+- release (#7)
+
 ## [0.1.0](https://github.com/tamto-labs/server/releases/tag/chord-rs-cli-v0.1.0) - 2023-05-11
 
 ### Other

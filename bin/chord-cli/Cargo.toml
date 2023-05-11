@@ -1,6 +1,6 @@
 [package]
 name = "chord-rs-cli"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "MIT"
 description = "CLI tool to interact with a chord cluster, it's part of the chord-rs project"
