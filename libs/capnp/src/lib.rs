@@ -1,7 +1,7 @@
 use std::{net::SocketAddr, sync::Arc};
 
 use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
-use chord_core::NodeService;
+use chord_rs_core::NodeService;
 use client::ChordCapnpClient;
 use futures::AsyncReadExt;
 use tokio::sync::Semaphore;
@@ -26,9 +26,9 @@ impl Server {
         let node_service = Arc::new(NodeService::new(addr, REPLICATION_FACTOR));
         if let Some(ring) = ring {
             const MAX_RETRIES: u32 = 5;
-            chord_core::server::join_ring(node_service.clone(), ring, MAX_RETRIES).await;
+            chord_rs_core::server::join_ring(node_service.clone(), ring, MAX_RETRIES).await;
         }
-        chord_core::server::background_tasks(node_service.clone());
+        chord_rs_core::server::background_tasks(node_service.clone());
 
         Self {
             addr,

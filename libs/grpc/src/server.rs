@@ -6,7 +6,7 @@ use std::{
 use chord_proto::chord_node_server::ChordNode;
 pub use chord_proto::chord_node_server::ChordNodeServer;
 use chord_proto::{PingRequest, PingResponse};
-use chord_core::{Node, NodeService};
+use chord_rs_core::{Node, NodeService};
 use error_stack::Report;
 pub use tonic::transport::Server;
 use tonic::{Request, Response, Status};
@@ -47,18 +47,18 @@ impl ChordService {
 
         if let Some(ring) = ring {
             const MAX_RETRIES: u32 = 5;
-            chord_core::server::join_ring(node_service.clone(), ring, MAX_RETRIES).await;
+            chord_rs_core::server::join_ring(node_service.clone(), ring, MAX_RETRIES).await;
         }
-        chord_core::server::background_tasks(node_service.clone());
+        chord_rs_core::server::background_tasks(node_service.clone());
 
         Self { node: node_service }
     }
 
-    fn map_error(error: Report<chord_core::error::ServiceError>) -> Status {
+    fn map_error(error: Report<chord_rs_core::error::ServiceError>) -> Status {
         let message = error.to_string();
         match error.current_context() {
-            chord_core::error::ServiceError::Unexpected => Status::internal(message),
-            chord_core::error::ServiceError::ClientDisconnected => todo!(),
+            chord_rs_core::error::ServiceError::Unexpected => Status::internal(message),
+            chord_rs_core::error::ServiceError::ClientDisconnected => todo!(),
         }
     }
 }
@@ -68,11 +68,11 @@ pub enum JoinRingError {
     ServiceError,
 }
 
-impl From<chord_core::error::ServiceError> for JoinRingError {
-    fn from(error: chord_core::error::ServiceError) -> Self {
+impl From<chord_rs_core::error::ServiceError> for JoinRingError {
+    fn from(error: chord_rs_core::error::ServiceError) -> Self {
         match error {
-            chord_core::error::ServiceError::Unexpected => Self::ServiceError,
-            chord_core::error::ServiceError::ClientDisconnected => todo!(),
+            chord_rs_core::error::ServiceError::Unexpected => Self::ServiceError,
+            chord_rs_core::error::ServiceError::ClientDisconnected => todo!(),
         }
     }
 }
@@ -129,32 +129,32 @@ impl ChordNode for ChordService {
     }
 }
 
-impl From<chord_core::Node> for FindSuccessorResponse {
-    fn from(node: chord_core::Node) -> Self {
+impl From<chord_rs_core::Node> for FindSuccessorResponse {
+    fn from(node: chord_rs_core::Node) -> Self {
         FindSuccessorResponse {
             node: Some(node.into()),
         }
     }
 }
 
-impl From<chord_core::Node> for GetSuccessorResponse {
-    fn from(node: chord_core::Node) -> Self {
+impl From<chord_rs_core::Node> for GetSuccessorResponse {
+    fn from(node: chord_rs_core::Node) -> Self {
         GetSuccessorResponse {
             node: Some(node.into()),
         }
     }
 }
 
-impl From<Option<chord_core::Node>> for GetPredecessorResponse {
-    fn from(node: Option<chord_core::Node>) -> Self {
+impl From<Option<chord_rs_core::Node>> for GetPredecessorResponse {
+    fn from(node: Option<chord_rs_core::Node>) -> Self {
         GetPredecessorResponse {
             node: node.map(|node| node.into()),
         }
     }
 }
 
-impl From<chord_core::Node> for chord_proto::Node {
-    fn from(node: chord_core::Node) -> Self {
+impl From<chord_rs_core::Node> for chord_proto::Node {
+    fn from(node: chord_rs_core::Node) -> Self {
         chord_proto::Node {
             id: node.id().into(),
             ip: Some(node.addr().ip().into()),

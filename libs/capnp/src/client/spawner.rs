@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 
 use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
-use chord_core::client::ClientError;
+use chord_rs_core::client::ClientError;
 use error_stack::{IntoReport, Report, ResultExt};
 use futures::AsyncReadExt;
 use thiserror::Error;

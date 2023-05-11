@@ -1,6 +1,6 @@
 use std::num::ParseIntError;
 
-use chord_core::{Client, NodeId};
+use chord_rs_core::{Client, NodeId};
 
 use crate::cli::LookupArgs;
 

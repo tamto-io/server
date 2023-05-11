@@ -1,6 +1,6 @@
 use std::{fmt::Display, time::Duration};
 
-use chord_core::{client::ClientError, Client};
+use chord_rs_core::{client::ClientError, Client};
 
 pub(crate) mod lookup;
 pub(crate) mod ping;

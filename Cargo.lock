@@ -235,7 +235,7 @@ dependencies = [
  "capnp",
  "capnp-rpc",
  "capnpc",
- "chord-core",
+ "chord-rs-core",
  "error-stack",
  "futures",
  "log",
@@ -245,26 +245,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "chord-core"
-version = "0.1.0"
-dependencies = [
- "async-recursion",
- "async-trait",
- "error-stack",
- "lazy_static",
- "log",
- "mockall",
- "seahash",
- "thiserror",
- "tokio",
-]
-
-[[package]]
 name = "chord-grpc"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "chord-core",
+ "chord-rs-core",
  "error-stack",
  "log",
  "prost",
@@ -281,6 +266,21 @@ dependencies = [
  "chord-grpc",
  "log",
  "tonic",
+]
+
+[[package]]
+name = "chord-rs-core"
+version = "0.1.0"
+dependencies = [
+ "async-recursion",
+ "async-trait",
+ "error-stack",
+ "lazy_static",
+ "log",
+ "mockall",
+ "seahash",
+ "thiserror",
+ "tokio",
 ]
 
 [[package]]
@@ -1169,8 +1169,8 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "chord-capnp",
- "chord-core",
  "chord-grpc",
+ "chord-rs-core",
  "clap",
  "log",
  "simplelog",

@@ -1,4 +1,4 @@
-use chord_core::Client;
+use chord_rs_core::Client;
 use clap::Parser;
 use commands::{CommandResult, Error};
 use chord_capnp::client::ChordCapnpClient;

@@ -1,6 +1,6 @@
 use std::{fmt::Display, sync::Arc};
 
-use chord_core::{Node, NodeService};
+use chord_rs_core::{Node, NodeService};
 
 use crate::{chord_capnp, parser::ResultBuilder};
 

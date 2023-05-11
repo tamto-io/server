@@ -1,6 +1,6 @@
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 
-use chord_core::Node;
+use chord_rs_core::Node;
 
 use crate::chord_capnp;
 use crate::chord_capnp::chord_node::node::ip_address;
@@ -9,7 +9,7 @@ use crate::chord_capnp::chord_node::node;
 
 use super::ResultBuilder;
 
-/// Map a capnp node to a chord_core node
+/// Map a capnp node to a chord_rs_core node
 impl TryFrom<node::Reader<'_>> for Node {
     type Error = super::ParserError;
 

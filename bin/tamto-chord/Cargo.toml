@@ -2,13 +2,14 @@
 name = "tamto-chord"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 chord-grpc = { version = "0.1.0", path = "../../libs/grpc" }
 chord-capnp = { version = "0.1.0", path = "../../libs/capnp" }
-chord-core = { version = "0.1.0", path = "../../libs/chord-core" }
+chord-rs-core = { version = "0.1.0", path = "../../libs/chord-core" }
 
 async-trait = "0.1.67"
 clap = { version = "4.1.13", features = ["derive"]}
