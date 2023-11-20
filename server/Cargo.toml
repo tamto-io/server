@@ -7,9 +7,7 @@ edition = "2021"
 
 [dependencies]
 clap = { version = "4.1.13", features = ["derive"] }
-chord-rs = { path = "../libs/chord-rs", features = ["capnp"] }
-# chord-grpc = { version = "0.1.0", path = "../libs/grpc" }
-# chord-capnp = { version = "0.1.0", path = "../libs/capnp" }
+chord-rs = { path = "../libs/chord/chord-rs", features = ["capnp"] }
 tokio = { version = "1.26.0", features = ["rt-multi-thread"] }
 log = "0.4.17"
 simplelog = "0.12.1"

@@ -8,9 +8,9 @@ description = "CLI tool to interact with a chord cluster, it's part of the chord
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-chord-grpc = { version = "0.1.0", path = "../../libs/grpc" }
-chord-capnp = { version = "0.1.0", path = "../../libs/capnp" }
-chord-rs-core = { version = "0.1.0", path = "../../libs/chord-core" }
+chord-grpc = { version = "0.1.0", path = "../../libs/chord/grpc" }
+chord-capnp = { version = "0.1.0", path = "../../libs/chord/capnp" }
+chord-rs-core = { version = "0.1.0", path = "../../libs/chord/core" }
 
 async-trait = "0.1.67"
 clap = { version = "4.1.13", features = ["derive"]}

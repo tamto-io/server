@@ -8,7 +8,7 @@ license = "MIT"
 [dependencies]
 async-trait = "0.1.67"
 tokio = { version = "1.24.2", features = ["rt-multi-thread"] }
-chord-rs-core = { version = "0.1.0", path = "../chord-core" }
+chord-rs-core = { version = "0.1.0", path = "../core" }
 prost = "0.11.6"
 tonic = "0.8"
 log = "0.4.17"
